@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATS Plurix 360° | Operação e Governança de R&amp;S</title>
+  <meta name="description" content="Plataforma centralizada de gestão de pipeline, governança de acesso, auditoria imutável e controle de SLAs de R&S." />
+  
+  <!-- Typography & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Container da Tela de Login (Exibida quando deslogado) -->
+    <div id="login-screen-container" class="login-screen-container" style="display: none;"></div>
+
+    <!-- Simulated Persona Switcher & RBAC Context Bar -->
+    <section id="rbac-bar" class="rbac-bar">
+      <div class="rbac-container">
+        <span class="rbac-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Simulador de Sessão / Perfil Ativo (RBAC):
+        </span>
+        <div class="rbac-actions">
+          <select id="user-persona-select" class="rbac-select" aria-label="Selecione o Perfil Ativo">
+            <!-- Dynamically populated personas -->
+          </select>
+          <div id="persona-badge" class="persona-badge">
+            <!-- Active role info -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Layout Principal: Sidebar + Área Principal -->
+    <div class="app-layout">
+      <!-- Overlay para Mobile Sidebar -->
+      <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+      <!-- Sidebar Lateral com Módulos de Navegação -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand-logo">
+            <span class="logo-accent">ATS</span>
+            <span class="logo-main">PLURIX 360°</span>
+          </div>
+          <div class="brand-subtitle">MVP 1 • Operação e Governança</div>
+        </div>
+
+        <div class="sidebar-nav-container">
+          <div class="sidebar-section-title">Módulos de Navegação</div>
+          <nav class="sidebar-nav" role="tablist">
+            <button class="sidebar-nav-item tab-btn active" data-view="kanban" role="tab" aria-selected="true">
+              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="6" height="14" x="4" y="5" rx="1"/><rect width="6" height="10" x="14" y="5" rx="1"/></svg>
+              <span>Funil do Candidato</span>
+            </button>
+            <button class="sidebar-nav-item tab-btn" data-view="jobs-kanban" role="tab" aria-selected="false">
+              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/></svg>
+              <span>Funil de Vagas</span>
+            </button>
+            <button class="sidebar-nav-item tab-btn" data-view="applications" role="tab" aria-selected="false">
+              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>Tabela de Candidaturas</span>
+            </button>
+            <button class="sidebar-nav-item tab-btn" data-view="jobs" role="tab" aria-selected="false">
+              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <span>Gestão de Vagas</span>
+            </button>
+            <button class="sidebar-nav-item tab-btn" data-view="indicators" role="tab" aria-selected="false">
+              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span>Indicadores &amp; Métricas</span>
+            </button>
+          </nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-user-card" id="sidebar-user-card" style="cursor: pointer;" title="Clique para deslogar">
+            <div class="user-avatar-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="sidebar-user-details">
+              <span id="sidebar-user-name" class="user-name">Carregando...</span>
+              <span id="sidebar-user-role" class="user-role-tag">--</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Área de Conteúdo Principal -->
+      <div class="app-main">
+        <!-- Topbar Autónoma (background var(--navy)) -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Menu Lateral" title="Alternar Sidebar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <h2 id="active-module-title" class="active-module-title">Funil do Candidato</h2>
+          </div>
+
+          <div class="topbar-nav">
+            <div class="topbar-user-info">
+              <span id="current-user-name" class="user-name">Carregando...</span>
+              <span id="current-user-role" class="user-role-tag">--</span>
+            </div>
+            <button id="btn-reset-db" class="btn btn-outline-light btn-sm" title="Restaurar Dados Demonstrativos">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              Resetar Dados
+            </button>
+            <button id="btn-logout" class="btn btn-outline-light btn-sm" title="Sair da Sessão">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sair
+            </button>
+          </div>
+        </header>
+
+        <main class="main-content">
+          <!-- Grade de Indicadores (KPI Grid - até 4 cartões acima da dobra) -->
+          <section class="kpi-section">
+            <div class="kpi-grid" id="kpi-grid">
+              <!-- KPI Cards rendered dynamically -->
+            </div>
+          </section>
+
+          <!-- Área de Filtros e Ações Rápidas (.card) -->
+          <section class="controls-section card">
+            <div class="toolbar">
+              <div class="search-box">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="filter-search" placeholder="Buscar por candidato, e-mail ou código/título da vaga..." />
+              </div>
+
+              <div class="filter-group">
+                <select id="filter-department" aria-label="Filtrar por Diretoria">
+                  <option value="">Todas as Diretorias</option>
+                </select>
+
+                <select id="filter-recruiter" aria-label="Filtrar por Recrutadora">
+                  <option value="">Todas as Recrutadoras</option>
+                </select>
+
+                <select id="filter-sla" aria-label="Filtrar por Status SLA">
+                  <option value="">Todos os SLAs</option>
+                  <option value="NO_PRAZO">SLA: No Prazo</option>
+                  <option value="ATENCAO">SLA: Atenção</option>
+                  <option value="ESTOURADO">SLA: Estourado</option>
+                </select>
+
+                <select id="filter-confidential" aria-label="Filtrar por Confidencialidade">
+                  <option value="">Todas as Vagas</option>
+                  <option value="REGULAR">Apenas Regulares</option>
+                  <option value="CONFIDENCIAL">Apenas Confidenciais</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="toolbar-bottom">
+              <!-- Quick Action Buttons -->
+              <div class="action-buttons">
+                <!-- Dropdown Exportar Excel -->
+                <div class="export-dropdown-wrapper" style="position: relative;">
+                  <button id="btn-export-menu" class="btn btn-excel" aria-expanded="false" title="Exportar dados para Excel (.xlsx)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2a2 2 0 1 0 0-4H8v8"/><path d="M16 13h-2v4h2"/></svg>
+                    Exportar Excel
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div id="export-dropdown-menu" class="dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #ffffff; border: 1px solid var(--brd); border-radius: var(--rs); box-shadow: var(--shadow-lg); z-index: 100; min-width: 230px;">
+                    <button id="btn-export-candidates" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                      Exportar Candidatos (.xlsx)
+                    </button>
+                    <button id="btn-export-jobs" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--brd2);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                      Exportar Vagas (.xlsx)
+                    </button>
+                    <button id="btn-export-all" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--navy); cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--brd2);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                      Relatório Completo (Ambos)
+                    </button>
+                  </div>
+                </div>
+
+                <button id="btn-new-candidate" class="btn btn-secondary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                  Novo Candidato
+                </button>
+                <button id="btn-new-job" class="btn btn-primary" title="Submeter abertura de vaga (BPs e Gestora RH)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Nova Vaga
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Dynamic Main View Area -->
+          <section class="view-container">
+            <!-- View 1: Kanban Funnel (Candidatos) -->
+            <div id="view-kanban" class="view-panel active">
+              <div class="kanban-wrapper" id="kanban-board">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- View 2: Jobs Kanban Funnel (Vagas) -->
+            <div id="view-jobs-kanban" class="view-panel">
+              <div class="kanban-wrapper" id="jobs-kanban-board">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- View 2: Applications Table -->
+            <div id="view-applications" class="view-panel">
+              <div class="table-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; background: #ffffff; padding: 10px 16px; border: 1px solid var(--brd); border-radius: var(--rs);">
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--navy);">📋 Tabela Operacional de Candidaturas</div>
+                <button id="btn-export-candidates-table" class="btn btn-excel btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2a2 2 0 1 0 0-4H8v8"/><path d="M16 13h-2v4h2"/></svg>
+                  Exportar Candidatos Excel
+                </button>
+              </div>
+              <div class="tbl-wrap">
+                <table class="data-table" id="applications-table">
+                  <thead>
+                    <tr>
+                      <th>Candidato</th>
+                      <th>Contato / Canal</th>
+                      <th>Vaga / Diretoria</th>
+                      <th>Recrutadora</th>
+                      <th>Etapa Atual</th>
+                      <th>Tempo na Etapa</th>
+                      <th>SLA</th>
+                      <th>Status</th>
+                      <th class="text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="applications-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- View 3: Jobs Table -->
+            <div id="view-jobs" class="view-panel">
+              <div class="table-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; background: #ffffff; padding: 10px 16px; border: 1px solid var(--brd); border-radius: var(--rs);">
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--navy);">💼 Tabela Operacional de Vagas</div>
+                <button id="btn-export-jobs-table" class="btn btn-excel btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                  Exportar Vagas Excel
+                </button>
+              </div>
+              <div class="tbl-wrap">
+                <table class="data-table" id="jobs-table">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Título da Vaga</th>
+                      <th>Negócio / Diretoria</th>
+                      <th>BP Responsável</th>
+                      <th>Recrutadora Atribuída</th>
+                      <th>SLA Limite</th>
+                      <th>Candidatos</th>
+                      <th>Status Vaga</th>
+                      <th class="text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="jobs-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- View 4: Indicators Module -->
+            <div id="view-indicators" class="view-panel">
+              <!-- Rendered dynamically -->
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Modal 5: Histórico de Auditoria (stage_history) -->
+    <div id="modal-audit" class="modal">
+      <div class="modal-dialog" style="max-width: 650px;">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title" id="drawer-candidate-name">Histórico de Transições e Auditoria</h3>
+            <div style="font-size: 0.78rem; opacity: 0.85; font-weight: 400; margin-top: 2px;" id="drawer-job-title">Auditoria Temporal em stage_history</div>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="audit-candidate-summary" id="drawer-candidate-meta"></div>
+          
+          <h4 class="timeline-title" style="margin-top: 14px;">Trilha de Auditoria (INSERT-Only)</h4>
+          <div class="timeline" id="drawer-timeline">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 1: Nova Vaga (CA-01, RN-04) -->
+    <div id="modal-job" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Abertura de Nova Vaga</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-job">
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label for="job-title" class="required">Título da Vaga / Cargo</label>
+                <input type="text" id="job-title" required placeholder="Ex: Analista de Sistemas Senior" />
+              </div>
+
+              <div class="form-group">
+                <label for="job-business-unit" class="required">Negócio / Empresa</label>
+                <select id="job-business-unit" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="job-department" class="required">Diretoria</label>
+                <select id="job-department" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="job-title-level">Nível da Função</label>
+                <select id="job-title-level">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="job-headcount-type">Quadro de Vagas</label>
+                <select id="job-headcount-type">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="job-selection-type" class="required">Tipo de Seleção / Canal</label>
+                <select id="job-selection-type" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="job-hiring-manager">Gestor Solicitante (Referência)</label>
+                <input type="text" id="job-hiring-manager" placeholder="Nome do gestor da vaga" />
+              </div>
+
+              <div class="form-group">
+                <label for="job-sla-days" class="required">SLA Limite por Etapa (dias)</label>
+                <input type="number" id="job-sla-days" value="4" min="1" max="30" required />
+              </div>
+
+              <div class="form-group">
+                <label for="job-recruiter">Recrutadora Atribuída (Opcional)</label>
+                <select id="job-recruiter">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="job-observation">Observação / Justificativa Inicial</label>
+                <textarea id="job-observation" rows="3" placeholder="Insira observações relevantes sobre a vaga, perfil desejado ou justificativa de abertura..."></textarea>
+              </div>
+
+              <div class="form-group checkbox-group span-2">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="job-is-pcd" />
+                  <span>Vaga Destinada a PCD (Pessoa com Deficiência)</span>
+                </label>
+
+                <label class="checkbox-label highlight-warning">
+                  <input type="checkbox" id="job-is-confidential" />
+                  <span>🔒 Vaga Confidencial (Restrição de visualização conforme RN-07)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Cadastrar Requisição de Vaga</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 2: Novo Candidato (RN-01, RN-02) -->
+    <div id="modal-candidate" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Novo Candidato e Candidatura</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-candidate">
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label for="cand-job-id" class="required">Vaga Desejada</label>
+                <select id="cand-job-id" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="cand-email" class="required">E-mail do Candidato (Chave Única)</label>
+                <input type="email" id="cand-email" required placeholder="candidato@email.com" />
+                <small class="form-help">RN-01: Candidatos existentes serão reutilizados automaticamente.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="cand-name" class="required">Nome Completo</label>
+                <input type="text" id="cand-name" required placeholder="Ex: Maria Silva" />
+              </div>
+
+              <div class="form-group">
+                <label for="cand-phone">Telefone / WhatsApp</label>
+                <input type="tel" id="cand-phone" placeholder="(11) 98888-7777" />
+              </div>
+
+              <div class="form-group span-2">
+                <label for="cand-source" class="required">Canal de Origem / Captação</label>
+                <select id="cand-source" required>
+                  <option value="LinkedIn">LinkedIn</option>
+                  <option value="ATS Plurix">Banco de Talentos ATS</option>
+                  <option value="Indicação Colaborador">Indicação de Colaborador</option>
+                  <option value="Indicação Gestor">Indicação de Gestor</option>
+                  <option value="Consultoria">Consultoria Externa</option>
+                  <option value="Mov. Interna">Movimentação Interna</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Registrar Candidatura</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 3: Movimentar Etapa (CA-04, CA-05) -->
+    <div id="modal-move-stage" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Avançar / Transicionar Etapa</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-move-stage">
+          <input type="hidden" id="move-application-id" />
+          <div class="modal-body">
+            <div class="candidate-preview-box" id="move-candidate-preview">
+              <!-- Candidate & Job preview -->
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label for="move-new-stage" class="required">Nova Etapa do Funil</label>
+                <select id="move-new-stage" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="move-status" class="required">Status Operacional da Candidatura</label>
+                <select id="move-status" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="move-feedback" class="required">Parecer Técnico / Observação (Auditoria)</label>
+                <textarea id="move-feedback" rows="4" required placeholder="Insira o parecer detalhado sobre a movimentação ou motivo de reprovação/avanço..."></textarea>
+                <small class="form-help">Será registrado de forma imutável em stage_history por <span id="move-author-label">--</span>.</small>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Confirmar Transição e Zerar Tempo SLA</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 4: Atribuir Recrutadora (RN-05, RN-06) -->
+    <div id="modal-assign-recruiter" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Atribuição de Recrutadora Executora</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-assign-recruiter">
+          <input type="hidden" id="assign-job-id" />
+          <div class="modal-body">
+            <p id="assign-job-title-display" class="highlight-box"></p>
+            <div class="form-group">
+              <label for="assign-recruiter-select" class="required">Selecione a Recrutadora Executora</label>
+              <select id="assign-recruiter-select" required>
+                <!-- Populated dynamically -->
+              </select>
+              <small class="form-help">RN-06: A BP titular pode selecionar seu próprio e-mail para assumir a condução operacional.</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar Atribuição</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 5: Alterar Status da Vaga (Funil de Vagas) -->
+    <div id="modal-move-job-status" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Alterar Status da Vaga</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-move-job-status">
+          <input type="hidden" id="move-job-id" />
+          <div class="modal-body">
+            <div class="candidate-preview-box" id="move-job-preview">
+              <!-- Job preview rendered dynamically -->
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="move-job-new-status" class="required">Novo Status da Vaga</label>
+              <select id="move-job-new-status" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="move-job-observation" class="required">Observação / Justificativa da Alteração de Status</label>
+              <textarea id="move-job-observation" rows="3" required placeholder="Insira a justificativa ou parecer para a alteração de status da vaga..."></textarea>
+              <small class="form-help">Esta observação será registrada imutavelmente no histórico de auditoria da vaga.</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Atualizar Status e Registrar Auditoria</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 6: Detalhes e Operações da Vaga (Funil de Vagas Card Click) -->
+    <div id="modal-job-details" class="modal">
+      <div class="modal-dialog" style="max-width: 850px;">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title" id="job-details-title">Detalhes da Vaga</h3>
+            <div style="font-size: 0.78rem; opacity: 0.85; font-weight: 400; margin-top: 2px;" id="job-details-subtitle">Visão 360° e Governança da Vaga</div>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="details-job-id" />
+          
+          <!-- Key Specs Grid -->
+          <div id="job-details-info" class="job-details-grid">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Candidatos Participantes da Vaga -->
+          <div id="job-details-candidates" class="job-candidates-box" style="margin-top: 20px;">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Trilha de Auditoria da Vaga (Job History) -->
+          <div id="job-details-audit" class="job-audit-box" style="margin-top: 20px;">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Actions Container -->
+          <div class="job-actions-box" style="margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid var(--brd); border-radius: var(--rs);">
+            <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--navy); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Opções da Vaga (Status &amp; Atribuição)
+            </h4>
+
+            <form id="form-job-details">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                <!-- Option 1: Alterar Status -->
+                <div class="form-group">
+                  <label for="details-status-select" style="font-size: 0.8rem; font-weight: 600;">Alterar Status da Vaga</label>
+                  <select id="details-status-select" style="font-size: 0.82rem; padding: 6px 10px;">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+
+                <!-- Option 2: Atribuir Recrutadora -->
+                <div class="form-group">
+                  <label for="details-recruiter-select" style="font-size: 0.8rem; font-weight: 600;">Atribuir Recrutadora</label>
+                  <select id="details-recruiter-select" style="font-size: 0.82rem; padding: 6px 10px;">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 14px;">
+                <label for="details-status-observation" style="font-size: 0.8rem; font-weight: 600;">Observação / Parecer da Alteração (Auditoria)</label>
+                <textarea id="details-status-observation" rows="2" placeholder="Digite uma observação opcional para ficar registrada na auditoria da vaga..."></textarea>
+              </div>
+
+              <button type="submit" id="btn-save-job-details" class="btn btn-primary" style="width: 100%;">
+                Salvar Alterações
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
