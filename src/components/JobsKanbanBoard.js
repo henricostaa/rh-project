@@ -11,7 +11,7 @@ let draggedJobId = null;
 let draggedFromStatus = null;
 let isDraggingJobCard = false;
 
-export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, onJobClick) {
+export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, onJobClick, onDeleteJobClick) {
   const container = document.getElementById('jobs-kanban-board');
   if (!container) return;
 
@@ -40,6 +40,7 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
             const jobAppsCount = allApps.filter(a => a.job_id === job.id).length;
             const canEditStatus = authService.canEditJobStatus(job);
             const canAssign = authService.canAssignRecruiter(job);
+            const canDelete = authService.canDeleteJob(job);
 
             return `
               <div class="kanban-card ${canEditStatus ? 'draggable' : 'read-only'}"
@@ -80,6 +81,12 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
                   </div>
                   
                   <div class="card-actions" style="width: 100%; justify-content: flex-end; gap: 6px; margin-top: 4px;">
+                    ${canDelete ? `
+                      <button class="btn btn-danger-outline btn-sm btn-delete-job-kanban" data-job-id="${job.id}" title="Excluir Vaga">
+                        🗑️
+                      </button>
+                    ` : ''}
+
                     <button class="btn btn-secondary btn-sm btn-job-audit-kanban" data-job-id="${job.id}" title="Ver Detalhes e Auditoria da Vaga">
                       Auditoria
                     </button>
@@ -141,6 +148,16 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
       e.stopPropagation();
       if (onJobClick) {
         onJobClick(btn.dataset.jobId);
+      }
+    };
+  });
+
+  // Click handler for job delete from kanban
+  container.querySelectorAll('.btn-delete-job-kanban').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (onDeleteJobClick) {
+        onDeleteJobClick(btn.dataset.jobId);
       }
     };
   });

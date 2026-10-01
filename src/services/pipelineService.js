@@ -4,6 +4,8 @@
 
 import { store } from '../db/store.js';
 import { authService } from './authService.js';
+import { supabaseService } from './supabaseService.js';
+import { isSupabaseConfigured } from '../db/supabaseClient.js';
 
 class PipelineService {
   getVisibleApplications() {
@@ -13,7 +15,7 @@ class PipelineService {
   }
 
   // CA-04 & CA-05: Movimentar candidatura atualiza current_stage, insere em stage_history e zera SLA
-  moveCandidateStage(applicationId, { newStage, newStatus, feedback }) {
+  async moveCandidateStage(applicationId, { newStage, newStatus, feedback }) {
     const app = store.getApplicationById(applicationId);
     if (!app) {
       throw new Error('Candidatura não encontrada.');
@@ -29,13 +31,24 @@ class PipelineService {
 
     const currentPersona = authService.getPersona();
 
-    const updatedApp = store.moveApplicationStage(applicationId, {
-      newStage,
-      newStatus: newStatus || app.status,
-      feedback: feedback.trim(),
-      movedBy: currentPersona.email
-    });
+    let updatedApp;
+    if (isSupabaseConfigured()) {
+      updatedApp = await supabaseService.moveApplicationStage(applicationId, {
+        newStage,
+        newStatus: newStatus || app.status,
+        feedback: feedback.trim(),
+        movedBy: currentPersona.email
+      });
+    } else {
+      updatedApp = store.moveApplicationStage(applicationId, {
+        newStage,
+        newStatus: newStatus || app.status,
+        feedback: feedback.trim(),
+        movedBy: currentPersona.email
+      });
+    }
 
+    store.syncApplication(updatedApp);
     return updatedApp;
   }
 
@@ -49,3 +62,4 @@ class PipelineService {
 }
 
 export const pipelineService = new PipelineService();
+

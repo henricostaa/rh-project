@@ -5,7 +5,7 @@
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
 
-export function renderCandidatesTable(applications, onMoveClick, onHistoryClick) {
+export function renderCandidatesTable(applications, onMoveClick, onHistoryClick, onDeleteClick) {
   const tbody = document.getElementById('applications-table-body');
   if (!tbody) return;
 
@@ -25,6 +25,7 @@ export function renderCandidatesTable(applications, onMoveClick, onHistoryClick)
     const job = app.job;
     const sla = store.calculateSLA(app, job);
     const canMove = authService.canMoveApplication(app, job);
+    const canDelete = authService.canDeleteApplication(app, job);
 
     return `
       <tr>
@@ -58,7 +59,7 @@ export function renderCandidatesTable(applications, onMoveClick, onHistoryClick)
         </td>
         <td class="text-right">
           <div style="display: flex; gap: 6px; justify-content: flex-end;">
-            <button class="btn btn-secondary btn-sm btn-history-table" data-app-id="${app.id}">
+            <button class="btn btn-secondary btn-sm btn-history-table" data-app-id="${app.id}" title="Ver Auditoria">
               Auditoria
             </button>
             ${canMove ? `
@@ -68,6 +69,11 @@ export function renderCandidatesTable(applications, onMoveClick, onHistoryClick)
             ` : `
               <button class="btn btn-secondary btn-sm" disabled>Leitura</button>
             `}
+            ${canDelete ? `
+              <button class="btn btn-danger-outline btn-sm btn-delete-app-table" data-app-id="${app.id}" title="Excluir Candidatura">
+                Excluir
+              </button>
+            ` : ''}
           </div>
         </td>
       </tr>
@@ -80,5 +86,13 @@ export function renderCandidatesTable(applications, onMoveClick, onHistoryClick)
 
   tbody.querySelectorAll('.btn-history-table').forEach(btn => {
     btn.onclick = () => onHistoryClick(btn.dataset.appId);
+  });
+
+  tbody.querySelectorAll('.btn-delete-app-table').forEach(btn => {
+    btn.onclick = () => {
+      if (onDeleteClick) {
+        onDeleteClick(btn.dataset.appId);
+      }
+    };
   });
 }

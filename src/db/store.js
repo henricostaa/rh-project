@@ -3,6 +3,9 @@
 // =============================================================================
 
 import { INITIAL_JOBS, INITIAL_CANDIDATES, INITIAL_APPLICATIONS, INITIAL_STAGE_HISTORY, INITIAL_JOB_HISTORY } from './seedData.js';
+import { supabaseService } from '../services/supabaseService.js';
+import { isSupabaseConfigured } from './supabaseClient.js';
+
 
 const STORAGE_KEY = 'ats_plurix_360_db_v1';
 
@@ -60,6 +63,72 @@ class DataStore {
       console.error('Erro ao salvar no LocalStorage:', e);
     }
   }
+
+  async loadFromSupabase() {
+    if (!isSupabaseConfigured()) return;
+    try {
+      const [jobs, candidates, applications, stageHistory, jobHistory] = await Promise.all([
+        supabaseService.getJobs(),
+        supabaseService.getCandidates(),
+        supabaseService.getApplications(),
+        supabaseService.getAllStageHistory(),
+        supabaseService.getAllJobHistory()
+      ]);
+
+      if (jobs && jobs.length > 0) this.jobs = jobs;
+      if (candidates && candidates.length > 0) this.candidates = candidates;
+      if (applications && applications.length > 0) this.applications = applications;
+      if (stageHistory && stageHistory.length > 0) this.stageHistory = stageHistory;
+      if (jobHistory && jobHistory.length > 0) this.jobHistory = jobHistory;
+
+      this.save();
+    } catch (e) {
+      console.warn('Falha ao carregar dados do Supabase:', e);
+    }
+  }
+
+  syncCandidateAndApplication(candidate, application) {
+    if (candidate) {
+      const existingIdx = this.candidates.findIndex(c => c.id === candidate.id || c.email === candidate.email);
+      if (existingIdx >= 0) {
+        this.candidates[existingIdx] = { ...this.candidates[existingIdx], ...candidate };
+      } else {
+        this.candidates.unshift(candidate);
+      }
+    }
+    if (application) {
+      const existingAppIdx = this.applications.findIndex(a => a.id === application.id);
+      if (existingAppIdx >= 0) {
+        this.applications[existingAppIdx] = { ...this.applications[existingAppIdx], ...application };
+      } else {
+        this.applications.unshift(application);
+      }
+    }
+    this.save();
+  }
+
+  syncJob(job) {
+    if (!job) return;
+    const idx = this.jobs.findIndex(j => j.id === job.id);
+    if (idx >= 0) {
+      this.jobs[idx] = { ...this.jobs[idx], ...job };
+    } else {
+      this.jobs.unshift(job);
+    }
+    this.save();
+  }
+
+  syncApplication(application) {
+    if (!application) return;
+    const idx = this.applications.findIndex(a => a.id === application.id);
+    if (idx >= 0) {
+      this.applications[idx] = { ...this.applications[idx], ...application };
+    } else {
+      this.applications.unshift(application);
+    }
+    this.save();
+  }
+
 
   // ---------------------------------------------------------------------------
   // Jobs API
@@ -377,6 +446,39 @@ class DataStore {
         limit: slaLimit
       };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deletion APIs
+  // ---------------------------------------------------------------------------
+  deleteApplication(id) {
+    this.applications = this.applications.filter(a => a.id !== id);
+    this.stageHistory = this.stageHistory.filter(h => h.application_id !== id);
+    this.save();
+    return true;
+  }
+
+  deleteCandidate(candidateId) {
+    const candApps = this.applications.filter(a => a.candidate_id === candidateId);
+    const appIds = candApps.map(a => a.id);
+    
+    this.candidates = this.candidates.filter(c => c.id !== candidateId);
+    this.applications = this.applications.filter(a => a.candidate_id !== candidateId);
+    this.stageHistory = this.stageHistory.filter(h => !appIds.includes(h.application_id));
+    this.save();
+    return true;
+  }
+
+  deleteJob(jobId) {
+    const jobApps = this.applications.filter(a => a.job_id === jobId);
+    const appIds = jobApps.map(a => a.id);
+
+    this.jobs = this.jobs.filter(j => j.id !== jobId);
+    this.applications = this.applications.filter(a => a.job_id !== jobId);
+    this.stageHistory = this.stageHistory.filter(h => !appIds.includes(h.application_id));
+    this.jobHistory = this.jobHistory.filter(h => h.job_id !== jobId);
+    this.save();
+    return true;
   }
 }
 

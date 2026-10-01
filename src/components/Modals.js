@@ -67,6 +67,9 @@ export function initModals(onSuccessRefresh) {
 
   // Setup Form 6: Detalhes e Ações da Vaga
   setupJobDetailsModal(onSuccessRefresh);
+
+  // Setup Form 7: Vincular do Banco de Talentos a Vaga
+  setupAttachJobModal(onSuccessRefresh);
 }
 
 // -----------------------------------------------------------------------------
@@ -102,7 +105,7 @@ function setupJobModal(onSuccessRefresh) {
   const form = document.getElementById('form-job');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const jobData = {
@@ -119,7 +122,7 @@ function setupJobModal(onSuccessRefresh) {
         is_confidential: document.getElementById('job-is-confidential').checked
       };
 
-      const newJob = jobService.createJob(jobData);
+      const newJob = await jobService.createJob(jobData);
       showToast(`Vaga ${newJob.id} ("${newJob.title}") criada com sucesso!`, 'success');
       document.getElementById('modal-job').classList.remove('open');
       onSuccessRefresh();
@@ -156,7 +159,7 @@ function setupCandidateModal(onSuccessRefresh) {
   const form = document.getElementById('form-candidate');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const payload = {
@@ -167,7 +170,7 @@ function setupCandidateModal(onSuccessRefresh) {
         source: document.getElementById('cand-source').value
       };
 
-      const result = candidateService.registerCandidateAndApplication(payload);
+      const result = await candidateService.registerCandidateAndApplication(payload);
       const msg = result.isNewCandidate
         ? `Candidato ${result.candidate.full_name} cadastrado e vinculado à vaga!`
         : `Cadastro de ${result.candidate.full_name} reutilizado (RN-01) e vinculado à vaga!`;
@@ -219,7 +222,7 @@ function setupMoveStageModal(onSuccessRefresh) {
   const form = document.getElementById('form-move-stage');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const applicationId = document.getElementById('move-application-id').value;
@@ -227,7 +230,7 @@ function setupMoveStageModal(onSuccessRefresh) {
       const newStatus = document.getElementById('move-status').value;
       const feedback = document.getElementById('move-feedback').value;
 
-      pipelineService.moveCandidateStage(applicationId, {
+      await pipelineService.moveCandidateStage(applicationId, {
         newStage,
         newStatus,
         feedback
@@ -275,13 +278,13 @@ function setupAssignRecruiterModal(onSuccessRefresh) {
   const form = document.getElementById('form-assign-recruiter');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const jobId = document.getElementById('assign-job-id').value;
       const recruiterEmail = document.getElementById('assign-recruiter-select').value;
 
-      jobService.assignRecruiter(jobId, recruiterEmail);
+      await jobService.assignRecruiter(jobId, recruiterEmail);
       showToast('Atribuição de recrutadora salva com sucesso!', 'success');
       document.getElementById('modal-assign-recruiter').classList.remove('open');
       onSuccessRefresh();
@@ -322,14 +325,14 @@ function setupMoveJobStatusModal(onSuccessRefresh) {
   const form = document.getElementById('form-move-job-status');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const jobId = document.getElementById('move-job-id').value;
       const newStatus = document.getElementById('move-job-new-status').value;
       const observation = document.getElementById('move-job-observation') ? document.getElementById('move-job-observation').value : '';
 
-      jobService.updateJobStatus(jobId, newStatus, observation);
+      await jobService.updateJobStatus(jobId, newStatus, observation);
       showToast(`Status da vaga ${jobId} alterado para "${newStatus}" com sucesso!`, 'success');
       document.getElementById('modal-move-job-status').classList.remove('open');
       onSuccessRefresh();
@@ -480,6 +483,11 @@ export function openJobDetailsModal(jobId) {
                         <button class="btn btn-secondary btn-sm btn-job-modal-audit" data-app-id="${app.id}" title="Ver Histórico de Auditoria">
                           Histórico
                         </button>
+                        ${authService.canDeleteApplication(app, job) ? `
+                          <button class="btn btn-danger-outline btn-sm btn-job-modal-delete-app" data-app-id="${app.id}" title="Excluir esta candidatura">
+                            Excluir
+                          </button>
+                        ` : ''}
                       </td>
                     </tr>
                   `;
@@ -490,7 +498,7 @@ export function openJobDetailsModal(jobId) {
         </div>
       `;
 
-      // Attach event listeners for move stage and audit buttons
+      // Attach event listeners for move stage, audit, and delete buttons
       candidatesContainer.querySelectorAll('.btn-job-modal-move').forEach(btn => {
         btn.onclick = () => {
           modal.classList.remove('open');
@@ -501,6 +509,33 @@ export function openJobDetailsModal(jobId) {
       candidatesContainer.querySelectorAll('.btn-job-modal-audit').forEach(btn => {
         btn.onclick = () => {
           openAuditDrawer(btn.dataset.appId);
+        };
+      });
+
+      candidatesContainer.querySelectorAll('.btn-job-modal-delete-app').forEach(btn => {
+        btn.onclick = () => {
+          const appId = btn.dataset.appId;
+          const targetApp = store.getApplicationById(appId);
+          if (!targetApp) return;
+
+          const cand = targetApp.candidate;
+          const candName = cand ? cand.full_name : 'Candidato';
+          const candEmail = cand ? cand.email : '';
+          openConfirmDeleteModal({
+            title: 'Excluir Candidato',
+            message: `Tem certeza que deseja excluir <strong>${candName}</strong> (${candEmail}) da vaga <strong>${job.id} - ${job.title}</strong>?`,
+            details: 'Esta ação irá remover o candidato da tabela de candidatos no Supabase, bem como suas candidaturas e histórico.',
+            onConfirm: async () => {
+              if (cand && cand.id) {
+                await candidateService.deleteCandidate(cand.id, candEmail);
+              } else {
+                await candidateService.deleteApplication(appId);
+              }
+              showToast(`Candidato ${candName} excluído do Supabase com sucesso!`, 'success');
+              modal.classList.remove('open');
+              onSuccessRefresh();
+            }
+          });
         };
       });
     }
@@ -595,6 +630,42 @@ export function openJobDetailsModal(jobId) {
     saveBtn.title = '';
   }
 
+  // Render Delete Job Button inside Modal Footer if authorized
+  const modalFooter = modal.querySelector('.modal-footer');
+  if (modalFooter) {
+    const canDelete = authService.canDeleteJob(job);
+    modalFooter.innerHTML = `
+      ${canDelete ? `
+        <button type="button" id="btn-job-details-delete" class="btn btn-danger-outline" style="margin-right: auto;">
+          🗑️ Excluir Vaga
+        </button>
+      ` : ''}
+      <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
+    `;
+
+    // Re-bind close event
+    modalFooter.querySelectorAll('[data-close-modal]').forEach(b => {
+      b.onclick = () => modal.classList.remove('open');
+    });
+
+    const deleteBtn = modalFooter.querySelector('#btn-job-details-delete');
+    if (deleteBtn) {
+      deleteBtn.onclick = () => {
+        openConfirmDeleteModal({
+          title: `Excluir Vaga ${job.id}`,
+          message: `Tem certeza que deseja excluir permanentemente a vaga <strong>${job.id}: ${job.title}</strong>?`,
+          details: `Esta ação excluirá a vaga, todo o histórico de auditoria e ${jobAppsCount} candidatura(s) vinculada(s).`,
+          onConfirm: async () => {
+            await jobService.deleteJob(job.id);
+            showToast(`Vaga ${job.id} excluída com sucesso!`, 'success');
+            modal.classList.remove('open');
+            onSuccessRefresh();
+          }
+        });
+      };
+    }
+  }
+
   modal.classList.add('open');
 }
 
@@ -602,7 +673,7 @@ function setupJobDetailsModal(onSuccessRefresh) {
   const form = document.getElementById('form-job-details');
   if (!form) return;
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     try {
       const jobId = document.getElementById('details-job-id').value;
@@ -618,14 +689,14 @@ function setupJobDetailsModal(onSuccessRefresh) {
 
       // Update status if changed and allowed
       if (newStatus !== job.status && authService.canEditJobStatus(job)) {
-        jobService.updateJobStatus(jobId, newStatus, observation);
+        await jobService.updateJobStatus(jobId, newStatus, observation);
         statusUpdated = true;
       }
 
       // Update recruiter if changed and allowed
       const currentRecruiter = job.recruiter_email || '';
       if (newRecruiter !== currentRecruiter && authService.canAssignRecruiter(job)) {
-        jobService.assignRecruiter(jobId, newRecruiter);
+        await jobService.assignRecruiter(jobId, newRecruiter);
         recruiterUpdated = true;
       }
 
@@ -649,5 +720,212 @@ function setupJobDetailsModal(onSuccessRefresh) {
       showToast(err.message, 'error');
     }
   };
+}
+
+// -----------------------------------------------------------------------------
+// Modal 7: Confirmation Dialog Helper
+// -----------------------------------------------------------------------------
+let pendingConfirmAction = null;
+
+export function openConfirmDeleteModal({ title, message, details, onConfirm }) {
+  const modal = document.getElementById('modal-confirm-delete');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('confirm-delete-title');
+  const msgEl = document.getElementById('confirm-delete-message');
+  const detailsEl = document.getElementById('confirm-delete-details');
+  const actionBtn = document.getElementById('btn-confirm-delete-action');
+
+  if (titleEl) {
+    titleEl.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      ${title || 'Confirmar Exclusão'}
+    `;
+  }
+
+  if (msgEl) msgEl.innerHTML = message || 'Tem certeza que deseja excluir este item?';
+
+  if (detailsEl) {
+    if (details) {
+      detailsEl.innerHTML = details;
+      detailsEl.style.display = 'block';
+    } else {
+      detailsEl.style.display = 'none';
+    }
+  }
+
+  pendingConfirmAction = onConfirm;
+
+  if (actionBtn) {
+    actionBtn.onclick = async () => {
+      if (pendingConfirmAction) {
+        try {
+          actionBtn.disabled = true;
+          actionBtn.textContent = 'Excluindo...';
+          await pendingConfirmAction();
+        } catch (err) {
+          showToast(err.message || 'Erro ao realizar exclusão.', 'error');
+        } finally {
+          actionBtn.disabled = false;
+          actionBtn.textContent = 'Sim, Excluir Definitivamente';
+          modal.classList.remove('open');
+          pendingConfirmAction = null;
+        }
+      }
+    };
+  }
+
+  modal.classList.add('open');
+}
+
+// -----------------------------------------------------------------------------
+// Modal 8: Vincular Candidato do Banco de Talentos a uma Vaga
+// -----------------------------------------------------------------------------
+export function openAttachToJobModal(candidateId, candidateEmail = null) {
+  const modal = document.getElementById('modal-attach-job');
+  const jobSelect = document.getElementById('attach-target-job-id');
+  const preview = document.getElementById('attach-cand-preview');
+  if (!modal) return;
+
+  let cand = store.getCandidates().find(c => c.id === candidateId || c.email === candidateEmail);
+  if (!cand && candidateEmail) {
+    cand = store.findCandidateByEmail(candidateEmail);
+  }
+
+  if (!cand) {
+    showToast('Candidato não encontrado no Banco de Talentos.', 'error');
+    return;
+  }
+
+  document.getElementById('attach-cand-id').value = cand.id;
+  document.getElementById('attach-cand-email').value = cand.email;
+
+  if (preview) {
+    preview.innerHTML = `
+      <div><strong>Candidato:</strong> ${cand.full_name}</div>
+      <div><strong>E-mail:</strong> ${cand.email} | <strong>Origem:</strong> ${cand.source || 'Banco de Talentos'}</div>
+    `;
+  }
+
+  const visibleJobs = jobService.getVisibleJobs();
+  if (visibleJobs.length === 0) {
+    showToast('Não há vagas disponíveis para registrar candidatura.', 'warning');
+    return;
+  }
+
+  jobSelect.innerHTML = visibleJobs.map(j => `
+    <option value="${j.id}">${j.id} - ${j.title} (${j.department}) ${j.is_confidential ? '🔒' : ''}</option>
+  `).join('');
+
+  modal.classList.add('open');
+}
+
+function setupAttachJobModal(onSuccessRefresh) {
+  const form = document.getElementById('form-attach-job');
+  if (!form) return;
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const candId = document.getElementById('attach-cand-id').value;
+      const email = document.getElementById('attach-cand-email').value;
+      const jobId = document.getElementById('attach-target-job-id').value;
+
+      const cand = store.getCandidates().find(c => c.id === candId || c.email === email);
+      if (!cand) throw new Error('Candidato não encontrado no Banco de Talentos.');
+
+      await candidateService.registerCandidateAndApplication({
+        full_name: cand.full_name,
+        email: cand.email,
+        phone: cand.phone || '',
+        source: cand.source || 'Banco de Talentos',
+        job_id: jobId
+      });
+
+      showToast(`Candidato ${cand.full_name} inscrito na vaga ${jobId} com sucesso!`, 'success');
+      document.getElementById('modal-attach-job').classList.remove('open');
+      onSuccessRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+}
+
+// Dialog com dupla escolha de exclusão (Remover da Vaga vs Excluir do Banco de Talentos)
+export function openDeleteChoiceModal({ candName, candEmail, jobTitle, onRemoveFromJob, onDeletePermanently }) {
+  const modal = document.getElementById('modal-confirm-delete');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('confirm-delete-title');
+  const msgEl = document.getElementById('confirm-delete-message');
+  const detailsEl = document.getElementById('confirm-delete-details');
+  const footerEl = modal.querySelector('.modal-footer');
+
+  if (titleEl) {
+    titleEl.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      Opções de Exclusão: ${candName}
+    `;
+  }
+
+  if (msgEl) {
+    msgEl.innerHTML = `
+      Escolha o tipo de exclusão desejado para <strong>${candName}</strong> (${candEmail || ''}):
+    `;
+  }
+
+  if (detailsEl) {
+    detailsEl.style.display = 'block';
+    detailsEl.innerHTML = `
+      • <strong>Remover Apenas da Vaga:</strong> Desvincula o candidato de <em>${jobTitle || 'esta vaga'}</em>, mantendo seu registro no <strong>Banco de Talentos</strong>.<br>
+      • <strong>Excluir Definitivamente:</strong> Remove o candidato completamente do sistema e do Supabase (Banco de Talentos + todas as candidaturas).
+    `;
+  }
+
+  if (footerEl) {
+    footerEl.innerHTML = `
+      <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+      <button type="button" id="btn-choice-remove-job" class="btn btn-secondary" style="border-color: var(--navy); color: var(--navy);">
+        Remover Apenas da Vaga
+      </button>
+      <button type="button" id="btn-choice-delete-perm" class="btn btn-danger">
+        Excluir do Banco de Talentos
+      </button>
+    `;
+
+    footerEl.querySelectorAll('[data-close-modal]').forEach(b => {
+      b.onclick = () => modal.classList.remove('open');
+    });
+
+    const removeBtn = footerEl.querySelector('#btn-choice-remove-job');
+    if (removeBtn) {
+      removeBtn.onclick = async () => {
+        try {
+          removeBtn.disabled = true;
+          await onRemoveFromJob();
+        } catch (err) {
+          showToast(err.message || 'Erro ao remover da vaga.', 'error');
+        } finally {
+          modal.classList.remove('open');
+        }
+      };
+    }
+
+    const deleteBtn = footerEl.querySelector('#btn-choice-delete-perm');
+    if (deleteBtn) {
+      deleteBtn.onclick = async () => {
+        try {
+          deleteBtn.disabled = true;
+          await onDeletePermanently();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir candidato.', 'error');
+        } finally {
+          modal.classList.remove('open');
+        }
+      };
+    }
+  }
+
+  modal.classList.add('open');
 }
 

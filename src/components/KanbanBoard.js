@@ -11,7 +11,7 @@ let draggedAppId = null;
 let draggedFromStage = null;
 let isDraggingCard = false;
 
-export function renderKanbanBoard(applications, onMoveClick, onHistoryClick) {
+export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onDeleteClick) {
   const container = document.getElementById('kanban-board');
   if (!container) return;
 
@@ -40,6 +40,7 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick) {
             const cand = app.candidate;
             const sla = store.calculateSLA(app, job);
             const canMove = authService.canMoveApplication(app, job);
+            const canDelete = authService.canDeleteApplication(app, job);
 
             return `
               <div class="kanban-card ${canMove ? 'draggable' : 'read-only'}"
@@ -67,7 +68,12 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick) {
 
                 <div class="card-meta">
                   <span>Recrutador: <b>${job && job.recruiter_email ? job.recruiter_email.split('@')[0] : 'Pendente'}</b></span>
-                  <div class="card-actions">
+                  <div class="card-actions" style="gap: 4px;">
+                    ${canDelete ? `
+                      <button class="btn btn-danger-outline btn-sm btn-delete-app-card" data-app-id="${app.id}" title="Excluir Candidatura">
+                        🗑️
+                      </button>
+                    ` : ''}
                     ${canMove ? `
                       <button class="btn btn-primary btn-sm btn-move" data-app-id="${app.id}">
                         Avançar &rarr;
@@ -99,6 +105,15 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick) {
     btn.onclick = (e) => {
       e.stopPropagation();
       onMoveClick(btn.dataset.appId);
+    };
+  });
+
+  container.querySelectorAll('.btn-delete-app-card').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (onDeleteClick) {
+        onDeleteClick(btn.dataset.appId);
+      }
     };
   });
 

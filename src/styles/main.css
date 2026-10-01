@@ -3,31 +3,61 @@
    ============================================================================= */
 
 :root {
+  /* Plurix Design System Tokens */
+  --bg-main-default: #00147d;
+  --bg-main-hover: #001164;
+  --bg-main-secondary: #000c49;
+  --bg-main-tertiary: #e4e8ff;
+  
+  --bg-secondary-default: #50baec;
+  --bg-secondary-hover: #19a1e0;
+  
+  --bg-default-default: #ffffff;
+  --bg-default-secondary: #f5f5f5;
+  --bg-default-tertiary: #d9d9d9;
+  
+  --text-default-default: #1e1e1e;
+  --text-default-secondary: #757575;
+  --text-main-on-brand: #ffffff;
+  --text-main-default: #00147d;
+  
+  --border-default-default: #d9d9d9;
+  --border-main-default: #001164;
+  --border-main-tertiary: #adbbff;
+
+  --bg-positive-default: #14ae5c;
+  --bg-warning-default: #e8b931;
+  --bg-danger-default: #ec221f;
+  --bg-disabled-default: #d9d9d9;
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-code: 'Roboto Mono', monospace;
+  --font-heading: 'Inter', sans-serif;
+
+  /* Mapeamentos legados do projeto */
   --navy: #00147D;
   --navy2: #001db3;
-  --pos: #10B981;
-  --pos-l: rgba(16, 185, 129, .1);
-  --pos-d: #047857;
-  --neg: #dc2626;
-  --neg-l: rgba(220, 38, 38, .1);
-  --neg-d: #A32D2D;
-  --gold: #F59E0B;
-  --gold-l: rgba(245, 158, 11, .1);
-  --gold-d: #92400e;
-  --bg: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
-  --card: #F4FAFE;
-  --brd: #B8D8E8;
-  --brd2: #E8EDF2;
-  --text: #1A2A38;
-  --muted: #7A90A0;
+  --pos: #14ae5c;
+  --pos-l: rgba(20, 174, 92, .1);
+  --pos-d: #02542d;
+  --neg: #ec221f;
+  --neg-l: rgba(236, 34, 31, .1);
+  --neg-d: #900b09;
+  --gold: #e8b931;
+  --gold-l: rgba(232, 185, 49, .1);
+  --gold-d: #522504;
+  --bg: #f5f5f5;
+  --card: #ffffff;
+  --brd: #d9d9d9;
+  --brd2: #e6e6e6;
+  --text: #1e1e1e;
+  --muted: #757575;
   --r: 12px;
   --rs: 8px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Outfit', 'Inter', sans-serif;
-  --shadow-sm: 0 2px 4px rgba(0, 20, 125, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 20, 125, 0.08);
-  --shadow-lg: 0 12px 24px rgba(0, 20, 125, 0.12);
+  --shadow-sm: 0px 1px 4px 0px rgba(12, 12, 13, 0.05);
+  --shadow-md: 0px 4px 4px -1px rgba(12, 12, 13, 0.1);
+  --shadow-lg: 0px 16px 32px -4px rgba(12, 12, 13, 0.1);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -727,6 +757,29 @@ body {
   background: #0e6b37;
   border-color: #084e27;
   box-shadow: 0 2px 8px rgba(16, 124, 65, 0.25);
+}
+
+.btn-danger {
+  background: var(--neg);
+  color: #ffffff;
+  border-color: var(--neg-d);
+}
+
+.btn-danger:hover {
+  background: var(--neg-d);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: var(--neg);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.btn-danger-outline:hover {
+  background: var(--neg-l);
+  color: var(--neg-d);
+  border-color: var(--neg);
 }
 
 .dropdown-item:hover {

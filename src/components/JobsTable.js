@@ -5,7 +5,7 @@
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
 
-export function renderJobsTable(jobs, onAssignClick, onJobClick) {
+export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClick) {
   const tbody = document.getElementById('jobs-table-body');
   if (!tbody) return;
 
@@ -25,6 +25,7 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick) {
   tbody.innerHTML = jobs.map(job => {
     const jobAppsCount = allApps.filter(a => a.job_id === job.id).length;
     const canAssign = authService.canAssignRecruiter(job);
+    const canDelete = authService.canDeleteJob(job);
 
     return `
       <tr class="job-table-row" data-job-id="${job.id}" style="cursor: pointer;">
@@ -76,6 +77,11 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick) {
               Bloqueado
             </button>
           `}
+          ${canDelete ? `
+            <button class="btn btn-danger-outline btn-sm btn-delete-job-table" data-job-id="${job.id}" title="Excluir Vaga">
+              Excluir
+            </button>
+          ` : ''}
         </td>
       </tr>
     `;
@@ -101,6 +107,15 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick) {
       e.stopPropagation();
       if (onJobClick) {
         onJobClick(btn.dataset.jobId);
+      }
+    };
+  });
+
+  tbody.querySelectorAll('.btn-delete-job-table').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (onDeleteJobClick) {
+        onDeleteJobClick(btn.dataset.jobId);
       }
     };
   });

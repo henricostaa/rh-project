@@ -307,6 +307,206 @@ export class SupabaseService {
     }
     return data || [];
   }
+
+  async getAllStageHistory() {
+    if (!isSupabaseConfigured()) return [];
+    const { data, error } = await supabase
+      .from('stage_history')
+      .select('*')
+      .order('moved_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar histórico de etapas:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async addJobHistoryRecord(record) {
+    if (!isSupabaseConfigured()) return null;
+    const { data, error } = await supabase
+      .from('job_history')
+      .insert([{
+        job_id: record.job_id,
+        previous_status: record.previous_status || null,
+        new_status: record.new_status,
+        observation: record.observation || '',
+        changed_by: record.changed_by,
+        changed_at: record.changed_at || new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao inserir histórico de vaga:', error);
+    }
+    return data;
+  }
+
+  async getJobHistoryByJobId(jobId) {
+    if (!isSupabaseConfigured()) return [];
+    const { data, error } = await supabase
+      .from('job_history')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('changed_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar histórico de vaga:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async getAllJobHistory() {
+    if (!isSupabaseConfigured()) return [];
+    const { data, error } = await supabase
+      .from('job_history')
+      .select('*')
+      .order('changed_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar histórico global de vagas:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deletion APIs
+  // ---------------------------------------------------------------------------
+  async deleteApplication(applicationId, appObject = null) {
+    if (!isSupabaseConfigured()) return true;
+
+    try {
+      let realAppUuid = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId);
+
+      if (isUuid) {
+        realAppUuid = applicationId;
+      } else if (appObject && appObject.job_id && appObject.candidate) {
+        // Tentar encontrar a candidatura no Supabase através do job_id e e-mail do candidato
+        const cand = await this.findCandidateByEmail(appObject.candidate.email);
+        if (cand) {
+          const { data: foundApp } = await supabase
+            .from('applications')
+            .select('id')
+            .eq('job_id', appObject.job_id)
+            .eq('candidate_id', cand.id)
+            .maybeSingle();
+
+          if (foundApp) {
+            realAppUuid = foundApp.id;
+          }
+        }
+      }
+
+      if (realAppUuid) {
+        // Remover histórico de etapas relacionado
+        await supabase.from('stage_history').delete().eq('application_id', realAppUuid);
+
+        // Remover aplicação
+        const { error } = await supabase.from('applications').delete().eq('id', realAppUuid);
+        if (error) {
+          console.error(`Erro ao excluir candidatura ${realAppUuid} no Supabase:`, error);
+          throw error;
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao excluir candidatura no Supabase:', err);
+      throw err;
+    }
+    return true;
+  }
+
+  async deleteCandidate(candidateId, candidateEmail = null) {
+    if (!isSupabaseConfigured()) return true;
+
+    try {
+      let realCandidateUuid = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidateId);
+
+      if (isUuid) {
+        realCandidateUuid = candidateId;
+      } else if (candidateEmail) {
+        const cand = await this.findCandidateByEmail(candidateEmail);
+        if (cand) {
+          realCandidateUuid = cand.id;
+        }
+      }
+
+      if (realCandidateUuid) {
+        // Buscar candidaturas do candidato para apagar seus históricos
+        const { data: apps } = await supabase
+          .from('applications')
+          .select('id')
+          .eq('candidate_id', realCandidateUuid);
+
+        if (apps && apps.length > 0) {
+          const appIds = apps
+            .map(a => a.id)
+            .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+          
+          if (appIds.length > 0) {
+            await supabase.from('stage_history').delete().in('application_id', appIds);
+          }
+
+          await supabase.from('applications').delete().eq('candidate_id', realCandidateUuid);
+        }
+
+        const { error } = await supabase.from('candidates').delete().eq('id', realCandidateUuid);
+        if (error) {
+          console.error(`Erro ao excluir candidato ${realCandidateUuid} no Supabase:`, error);
+          throw error;
+        }
+      } else if (candidateEmail) {
+        // Se id local não for UUID, tentar apagar pelo e-mail
+        const normalizedEmail = candidateEmail.trim().toLowerCase();
+        const { data: cands } = await supabase.from('candidates').select('id').eq('email', normalizedEmail);
+        if (cands && cands.length > 0) {
+          for (const c of cands) {
+            await this.deleteCandidate(c.id, normalizedEmail);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao excluir candidato no Supabase:', err);
+      throw err;
+    }
+    return true;
+  }
+
+  async deleteJob(jobId) {
+    if (!isSupabaseConfigured()) return true;
+
+    try {
+      // Limpar histórico de vagas e candidaturas vinculadas
+      await supabase.from('job_history').delete().eq('job_id', jobId);
+      const { data: apps } = await supabase.from('applications').select('id').eq('job_id', jobId);
+      if (apps && apps.length > 0) {
+        const appIds = apps
+          .map(a => a.id)
+          .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        
+        if (appIds.length > 0) {
+          await supabase.from('stage_history').delete().in('application_id', appIds);
+        }
+
+        await supabase.from('applications').delete().eq('job_id', jobId);
+      }
+
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId);
+      if (error) {
+        console.error(`Erro ao excluir vaga ${jobId} no Supabase:`, error);
+        throw error;
+      }
+    } catch (err) {
+      console.error('Erro ao excluir vaga no Supabase:', err);
+      throw err;
+    }
+    return true;
+  }
 }
 
 export const supabaseService = new SupabaseService();
+

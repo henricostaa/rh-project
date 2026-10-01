@@ -246,6 +246,38 @@ class AuthService {
 
     return false;
   }
+
+  // Permissão para excluir candidatura (vaga x candidato)
+  canDeleteApplication(application, job) {
+    if (!application) return false;
+    if (this.currentPersona.role === 'GESTORA_RH') return true;
+    if (!job) return true;
+
+    if (this.currentPersona.role === 'BP') {
+      return job.bp_in_charge_email === this.currentPersona.email || this.canCreateJob();
+    }
+
+    if (job.recruiter_email === this.currentPersona.email) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Permissão para excluir candidato globalmente
+  canDeleteCandidate() {
+    return ['GESTORA_RH', 'BP'].includes(this.currentPersona.role);
+  }
+
+  // Permissão para excluir vaga
+  canDeleteJob(job) {
+    if (!job) return false;
+    if (this.currentPersona.role === 'GESTORA_RH') return true;
+    if (this.currentPersona.role === 'BP' && job.bp_in_charge_email === this.currentPersona.email) {
+      return true;
+    }
+    return false;
+  }
 }
 
 export const authService = new AuthService();
