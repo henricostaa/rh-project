@@ -71,8 +71,7 @@ export class SupabaseService {
       recruiter_email: jobData.recruiter_email || null,
       is_confidential: !!jobData.is_confidential,
       observation: jobData.observation || null,
-      description: jobData.description || null,
-      comment: jobData.comment || null
+      description: jobData.description || null
     };
 
     const { data, error } = await supabase
