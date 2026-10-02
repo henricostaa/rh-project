@@ -59,13 +59,20 @@ export class SupabaseService {
       hiring_manager: jobData.hiring_manager || null,
       headcount_type: jobData.headcount_type || 'Substituição',
       selection_type: jobData.selection_type,
+      work_model: jobData.work_model || 'Presencial',
+      positions_count: (jobData.positions_count && Number(jobData.positions_count) > 0) ? Number(jobData.positions_count) : 1,
+      salary_min: (jobData.salary_min !== undefined && jobData.salary_min !== '' && jobData.salary_min !== null) ? Number(jobData.salary_min) : null,
+      salary_max: (jobData.salary_max !== undefined && jobData.salary_max !== '' && jobData.salary_max !== null) ? Number(jobData.salary_max) : null,
       is_pcd: !!jobData.is_pcd,
       status: jobData.status || 'Alinhamento',
       stage_sla_days: Number(jobData.stage_sla_days) || 4,
       opened_by_role: jobData.opened_by_role,
       bp_in_charge_email: jobData.bp_in_charge_email,
       recruiter_email: jobData.recruiter_email || null,
-      is_confidential: !!jobData.is_confidential
+      is_confidential: !!jobData.is_confidential,
+      observation: jobData.observation || null,
+      description: jobData.description || null,
+      comment: jobData.comment || null
     };
 
     const { data, error } = await supabase
@@ -144,7 +151,11 @@ export class SupabaseService {
         full_name: candData.full_name,
         email: candData.email.trim().toLowerCase(),
         phone: candData.phone || null,
-        source: candData.source
+        source: candData.source,
+        linkedin: candData.linkedin || null,
+        comment: candData.comment || null,
+        resume_url: candData.resume_url || null,
+        resume_name: candData.resume_name || null
       }])
       .select()
       .single();
@@ -154,6 +165,59 @@ export class SupabaseService {
       throw error;
     }
     return { candidate: data, created: true };
+  }
+
+  async updateCandidate(candidateId, updates) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase não configurado');
+
+    let realCandidateUuid = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidateId);
+
+    if (isUuid) {
+      realCandidateUuid = candidateId;
+    } else if (updates.originalEmail) {
+      const existing = await this.findCandidateByEmail(updates.originalEmail);
+      if (existing) realCandidateUuid = existing.id;
+    }
+
+    const payload = {
+      full_name: updates.full_name,
+      email: updates.email ? updates.email.trim().toLowerCase() : undefined,
+      phone: updates.phone || null,
+      source: updates.source,
+      linkedin: updates.linkedin !== undefined ? updates.linkedin : undefined,
+      comment: updates.comment !== undefined ? updates.comment : undefined,
+      resume_url: updates.resume_url !== undefined ? updates.resume_url : undefined,
+      resume_name: updates.resume_name !== undefined ? updates.resume_name : undefined
+    };
+
+    if (realCandidateUuid) {
+      const { data, error } = await supabase
+        .from('candidates')
+        .update(payload)
+        .eq('id', realCandidateUuid)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao atualizar candidato no Supabase:', error);
+        throw error;
+      }
+      return data;
+    } else {
+      const existing = await this.findCandidateByEmail(updates.email);
+      if (existing) {
+        const { data, error } = await supabase
+          .from('candidates')
+          .update(payload)
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------

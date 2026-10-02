@@ -45,7 +45,7 @@ export function renderLoginScreen(onLoginSuccess) {
               <div class="feature-icon">⚡</div>
               <div>
                 <strong class="feature-title">Auditoria Imutável (RN-03)</strong>
-                <p class="feature-desc">Histórico temporal INSERT-Only gravado em stage_history a cada transição de etapa.</p>
+                <p class="feature-desc">Histórico temporal gravado em stage_history a cada transição de etapa.</p>
               </div>
             </div>
 

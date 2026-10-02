@@ -8,7 +8,7 @@ import { supabaseService } from './supabaseService.js';
 import { isSupabaseConfigured } from '../db/supabaseClient.js';
 
 class CandidateService {
-  async registerCandidateAndApplication({ full_name, email, phone, source, job_id }) {
+  async registerCandidateAndApplication({ full_name, email, phone, source, linkedin, comment, resume_url, resume_name, job_id }) {
     if (!email || !full_name || !job_id || !source) {
       throw new Error('Todos os campos obrigatórios devem ser preenchidos.');
     }
@@ -32,7 +32,11 @@ class CandidateService {
         full_name,
         email,
         phone,
-        source
+        source,
+        linkedin,
+        comment,
+        resume_url,
+        resume_name
       });
       candidate = candRes.candidate;
       created = candRes.created;
@@ -44,7 +48,11 @@ class CandidateService {
         full_name,
         email,
         phone,
-        source
+        source,
+        linkedin,
+        comment,
+        resume_url,
+        resume_name
       });
       candidate = candRes.candidate;
       created = candRes.created;
@@ -80,6 +88,22 @@ class CandidateService {
     return true;
   }
 
+  async updateCandidate(candidateId, candData) {
+    if (!authService.canEditCandidate()) {
+      throw new Error('Permissão negada: Você não possui permissão para editar os dados deste candidato.');
+    }
+
+    let updatedCand;
+    if (isSupabaseConfigured()) {
+      updatedCand = await supabaseService.updateCandidate(candidateId, candData);
+    } else {
+      updatedCand = store.updateCandidate(candidateId, candData);
+    }
+
+    store.syncCandidateAndApplication(updatedCand, null);
+    return updatedCand;
+  }
+
   async deleteCandidate(candidateId, candidateEmail = null) {
     if (!authService.canDeleteCandidate()) {
       throw new Error('Permissão negada: Somente BPs e Gestora de RH podem excluir registros de candidatos.');
@@ -94,4 +118,5 @@ class CandidateService {
 }
 
 export const candidateService = new CandidateService();
+
 

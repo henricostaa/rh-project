@@ -3,6 +3,11 @@
 // =============================================================================
 
 export const TAXONOMY = {
+  workModels: [
+    'Presencial',
+    'Híbrido',
+    'Remoto'
+  ],
   businessUnits: [
     'Amigão',
     'Avenida',

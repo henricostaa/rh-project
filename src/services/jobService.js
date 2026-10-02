@@ -133,6 +133,61 @@ class JobService {
     return updatedJob;
   }
 
+  // Atualizar Detalhes/Informações Cadastrais da Vaga
+  async updateJobDetails(jobId, jobData) {
+    const job = store.getJobById(jobId);
+    if (!job) {
+      throw new Error('Vaga não encontrada.');
+    }
+
+    if (!authService.canEditJobDetails(job)) {
+      throw new Error('Permissão negada: Somente a Gestora de RH, BP responsável ou recrutadora atribuída podem editar os dados desta vaga.');
+    }
+
+    const currentPersona = authService.getPersona();
+    const updates = {
+      title: jobData.title,
+      business_unit: jobData.business_unit,
+      department: jobData.department,
+      hiring_manager: jobData.hiring_manager || null,
+      headcount_type: jobData.headcount_type || 'Substituição',
+      selection_type: jobData.selection_type,
+      work_model: jobData.work_model || 'Presencial',
+      positions_count: (jobData.positions_count && Number(jobData.positions_count) > 0) ? Number(jobData.positions_count) : 1,
+      salary_min: (jobData.salary_min !== undefined && jobData.salary_min !== '' && jobData.salary_min !== null) ? Number(jobData.salary_min) : null,
+      salary_max: (jobData.salary_max !== undefined && jobData.salary_max !== '' && jobData.salary_max !== null) ? Number(jobData.salary_max) : null,
+      stage_sla_days: Number(jobData.stage_sla_days) || 4,
+      recruiter_email: jobData.recruiter_email || null,
+      observation: jobData.observation || '',
+      is_pcd: !!jobData.is_pcd,
+      is_confidential: !!jobData.is_confidential
+    };
+
+    if (jobData.status && jobData.status !== job.status) {
+      updates.status = jobData.status;
+    }
+
+    let updatedJob;
+    if (isSupabaseConfigured()) {
+      updatedJob = await supabaseService.updateJob(jobId, updates);
+      await supabaseService.addJobHistoryRecord({
+        job_id: jobId,
+        previous_status: job.status,
+        new_status: updates.status || job.status,
+        observation: `Dados cadastrais da vaga atualizados por ${currentPersona.email}.`,
+        changed_by: currentPersona.email
+      });
+    } else {
+      updatedJob = store.updateJob(jobId, updates, {
+        observation: `Dados cadastrais da vaga atualizados por ${currentPersona.email}.`,
+        changed_by: currentPersona.email
+      });
+    }
+
+    store.syncJob(updatedJob);
+    return updatedJob;
+  }
+
   // Obter Histórico de Auditoria da Vaga
   getJobAuditHistory(jobId) {
     return store.getJobHistoryByJobId(jobId);

@@ -21,6 +21,7 @@ import { renderCandidatesTable } from './components/CandidatesTable.js';
 import { renderJobsTable } from './components/JobsTable.js';
 import { renderTalentBankTable } from './components/TalentBankTable.js';
 import { renderIndicatorsModule } from './components/IndicatorsModule.js';
+import { renderExecutiveDashboard } from './components/ExecutiveDashboard.js';
 import { openAuditDrawer } from './components/AuditDrawer.js';
 import {
   initModals,
@@ -33,14 +34,16 @@ import {
   openJobDetailsModal,
   openConfirmDeleteModal,
   openAttachToJobModal,
-  openDeleteChoiceModal
+  openDeleteChoiceModal,
+  openEditCandidateModal,
+  openEditJobModal
 } from './components/Modals.js';
 
 import { exportCandidatesToExcel, exportJobsToExcel, exportAllToExcel } from './services/exportService.js';
 
 // Application State
 const state = {
-  currentView: 'kanban',
+  currentView: 'dashboard',
   filters: {
     search: '',
     department: '',
@@ -91,7 +94,8 @@ function refreshUI() {
       const matchTitle = j.title.toLowerCase().includes(searchLower);
       const matchCode = j.id.toLowerCase().includes(searchLower);
       const matchDept = j.department.toLowerCase().includes(searchLower);
-      if (!matchTitle && !matchCode && !matchDept) return false;
+      const matchBU = j.business_unit && j.business_unit.toLowerCase().includes(searchLower);
+      if (!matchTitle && !matchCode && !matchDept && !matchBU) return false;
     }
     return true;
   });
@@ -115,7 +119,8 @@ function refreshUI() {
       const matchCandEmail = cand && cand.email.toLowerCase().includes(searchLower);
       const matchJobTitle = job && job.title.toLowerCase().includes(searchLower);
       const matchJobCode = job && job.id.toLowerCase().includes(searchLower);
-      if (!matchCandName && !matchCandEmail && !matchJobTitle && !matchJobCode) return false;
+      const matchBU = job && job.business_unit && job.business_unit.toLowerCase().includes(searchLower);
+      if (!matchCandName && !matchCandEmail && !matchJobTitle && !matchJobCode && !matchBU) return false;
     }
 
     return true;
@@ -220,11 +225,24 @@ function refreshUI() {
     () => exportAllToExcel(filteredJobs, filteredApps)
   );
 
-  renderKanbanBoard(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete);
-  renderJobsKanbanBoard(filteredJobs, openMoveJobStatusModal, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete);
-  renderCandidatesTable(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete);
-  renderJobsTable(filteredJobs, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete);
-  renderTalentBankTable(filteredCandidates, openAttachToJobModal, handleTalentDelete);
+  renderExecutiveDashboard(
+    filteredJobs,
+    filteredApps,
+    filteredCandidates,
+    (newView) => {
+      state.currentView = newView;
+      refreshUI();
+    },
+    openNewJobModal,
+    openNewCandidateModal,
+    openJobDetailsModal
+  );
+
+  renderKanbanBoard(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete, openEditCandidateModal);
+  renderJobsKanbanBoard(filteredJobs, openMoveJobStatusModal, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete, openEditJobModal);
+  renderCandidatesTable(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete, openEditCandidateModal);
+  renderJobsTable(filteredJobs, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete, openEditJobModal);
+  renderTalentBankTable(filteredCandidates, openAttachToJobModal, handleTalentDelete, openEditCandidateModal);
   renderIndicatorsModule(filteredJobs, filteredApps);
 }
  

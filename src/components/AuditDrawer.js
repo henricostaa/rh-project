@@ -4,6 +4,8 @@
 
 import { store } from '../db/store.js';
 import { pipelineService } from '../services/pipelineService.js';
+import { authService } from '../services/authService.js';
+import { openMoveStageModal, openEditCandidateModal } from './Modals.js';
 
 export function openAuditDrawer(applicationId) {
   const modal = document.getElementById('modal-audit') || document.getElementById('audit-drawer');
@@ -20,17 +22,56 @@ export function openAuditDrawer(applicationId) {
   const cand = app.candidate;
   const job = app.job;
   const history = pipelineService.getAuditHistory(applicationId);
+  const canMove = authService.canMoveApplication(app, job);
 
-  nameEl.textContent = cand ? `Auditoria: ${cand.full_name}` : 'Histórico de Auditoria';
+  nameEl.textContent = cand ? `${cand.full_name}` : 'Histórico de Auditoria';
   titleEl.textContent = job ? `Vaga: ${job.id} - ${job.title}` : 'Sem vaga';
 
+  const headerActionsContainer = document.getElementById('audit-header-actions');
+  if (headerActionsContainer) {
+    headerActionsContainer.innerHTML = (cand && authService.canEditCandidate()) ? `
+      <button type="button" id="btn-drawer-edit-cand" class="btn btn-outline-light btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Editar Candidato
+      </button>
+    ` : '';
+  }
+
   metaEl.innerHTML = `
-    <div style="font-size: 0.82rem; line-height: 1.6;">
-      <div><b>E-mail:</b> ${cand ? cand.email : '--'}</div>
-      <div><b>Canal:</b> ${cand ? cand.source : '--'} | <b>Telefone:</b> ${cand && cand.phone ? cand.phone : '--'}</div>
-      <div><b>Etapa Atual:</b> <span class="badge badge-neutral">${app.current_stage}</span> | <b>Status:</b> <span class="badge badge-a">${app.status}</span></div>
+    <div style="font-size: 0.84rem; line-height: 1.6; background: #f8fafc; padding: 14px; border: 1px solid var(--brd); border-radius: var(--rs); margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div><b>E-mail:</b> ${cand ? cand.email : '--'}</div>
+          <div><b>Empresa / Bandeira:</b> ${job && job.business_unit ? job.business_unit : 'N/A'} | <b>Diretoria:</b> ${job && job.department ? job.department : 'N/A'}</div>
+          <div><b>Canal:</b> ${cand ? cand.source : '--'} | <b>Telefone:</b> ${cand && cand.phone ? cand.phone : '--'}</div>
+          <div style="margin-top: 4px;"><b>Etapa Atual:</b> <span class="badge badge-neutral">${app.current_stage}</span> | <b>Status:</b> <span class="badge badge-a">${app.status}</span></div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          ${canMove ? `
+            <button type="button" id="btn-drawer-move-stage" class="btn btn-primary btn-sm">
+              Etapa &rarr; Transicionar
+            </button>
+          ` : ''}
+        </div>
+      </div>
     </div>
   `;
+
+  const btnEditCand = modal.querySelector('#btn-drawer-edit-cand');
+  if (btnEditCand && cand) {
+    btnEditCand.onclick = () => {
+      modal.classList.remove('open');
+      openEditCandidateModal(cand.id || cand.email);
+    };
+  }
+
+  const btnMoveStage = metaEl.querySelector('#btn-drawer-move-stage');
+  if (btnMoveStage) {
+    btnMoveStage.onclick = () => {
+      modal.classList.remove('open');
+      openMoveStageModal(applicationId);
+    };
+  }
 
   if (history.length === 0) {
     timelineEl.innerHTML = `
@@ -74,3 +115,4 @@ export function openAuditDrawer(applicationId) {
     }
   };
 }
+

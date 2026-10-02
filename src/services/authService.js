@@ -247,6 +247,24 @@ class AuthService {
     return false;
   }
 
+  // Permissão para editar informações do candidato
+  canEditCandidate() {
+    return true; // Todos os usuários operacionais de R&S autenticados
+  }
+
+  // Permissão para editar dados da vaga
+  canEditJobDetails(job) {
+    if (!job) return false;
+    if (this.currentPersona.role === 'GESTORA_RH') return true;
+    if (this.currentPersona.role === 'BP' && job.bp_in_charge_email === this.currentPersona.email) {
+      return true;
+    }
+    if (job.recruiter_email === this.currentPersona.email) {
+      return true;
+    }
+    return false;
+  }
+
   // Permissão para excluir candidatura (vaga x candidato)
   canDeleteApplication(application, job) {
     if (!application) return false;
@@ -281,4 +299,5 @@ class AuthService {
 }
 
 export const authService = new AuthService();
+
 

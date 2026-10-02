@@ -11,7 +11,6 @@ export function renderTopbar(onStateChange) {
   const badgeEl = document.getElementById('persona-badge');
   const userNameEl = document.getElementById('current-user-name');
   const userRoleEl = document.getElementById('current-user-role');
-  const resetBtn = document.getElementById('btn-reset-db');
   const logoutBtn = document.getElementById('btn-logout');
   const sidebarUserCard = document.getElementById('sidebar-user-card');
 
@@ -43,15 +42,6 @@ export function renderTopbar(onStateChange) {
     updatePersonaDisplay();
     if (onStateChange) onStateChange();
   };
-
-  if (resetBtn) {
-    resetBtn.onclick = () => {
-      if (confirm('Deseja restaurar todos os dados do banco para os padrões de fábrica do MVP?')) {
-        store.reset();
-        if (onStateChange) onStateChange();
-      }
-    };
-  }
 
   if (logoutBtn) {
     logoutBtn.onclick = () => {

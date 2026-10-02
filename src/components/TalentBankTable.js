@@ -5,7 +5,7 @@
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
 
-export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCandidateClick) {
+export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCandidateClick, onEditCandidateClick) {
   const tbody = document.getElementById('talent-bank-table-body');
   if (!tbody) return;
 
@@ -35,14 +35,13 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
       <tr>
         <td>
           <div class="cell-main" style="font-weight: 600; color: var(--navy);">${cand.full_name}</div>
-          <div class="cell-sub">ID: ${cand.id}</div>
         </td>
         <td>
           <div class="cell-main">${cand.email}</div>
         </td>
         <td>
           <div class="cell-main">${cand.phone || '--'}</div>
-          <div class="cell-sub">📍 Origem: ${cand.source || 'N/A'}</div>
+          <div class="cell-sub">Origem: ${cand.source || 'N/A'}</div>
         </td>
         <td>
           <span class="cell-main">${formattedDate}</span>
@@ -54,6 +53,9 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
         </td>
         <td class="text-right" style="white-space: nowrap;">
           <div style="display: flex; gap: 6px; justify-content: flex-end;">
+            <button class="btn btn-secondary btn-sm btn-edit-talent" data-cand-id="${cand.id}" data-cand-email="${cand.email}" title="Editar informações do candidato">
+              Editar
+            </button>
             <button class="btn btn-primary btn-sm btn-attach-job" data-cand-id="${cand.id}" data-cand-email="${cand.email}" title="Inscrever este candidato em uma vaga aberta">
               + Vincular a Vaga
             </button>
@@ -67,6 +69,14 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
       </tr>
     `;
   }).join('');
+
+  tbody.querySelectorAll('.btn-edit-talent').forEach(btn => {
+    btn.onclick = () => {
+      if (onEditCandidateClick) {
+        onEditCandidateClick(btn.dataset.candId, btn.dataset.candEmail);
+      }
+    };
+  });
 
   tbody.querySelectorAll('.btn-attach-job').forEach(btn => {
     btn.onclick = () => {
@@ -84,3 +94,4 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
     };
   });
 }
+

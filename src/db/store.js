@@ -7,6 +7,20 @@ import { supabaseService } from '../services/supabaseService.js';
 import { isSupabaseConfigured } from './supabaseClient.js';
 
 
+export function formatSalaryRange(salaryMin, salaryMax) {
+  const min = (salaryMin !== null && salaryMin !== undefined && salaryMin !== '') ? Number(salaryMin) : null;
+  const max = (salaryMax !== null && salaryMax !== undefined && salaryMax !== '') ? Number(salaryMax) : null;
+
+  if (min && max) {
+    return `R$ ${min.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - R$ ${max.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  } else if (min) {
+    return `A partir de R$ ${min.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  } else if (max) {
+    return `Até R$ ${max.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  }
+  return 'A combinar';
+}
+
 const STORAGE_KEY = 'ats_plurix_360_db_v1';
 
 class DataStore {
@@ -157,6 +171,10 @@ class DataStore {
       hiring_manager: jobData.hiring_manager || null,
       headcount_type: jobData.headcount_type || 'Substituição',
       selection_type: jobData.selection_type,
+      work_model: jobData.work_model || 'Presencial',
+      positions_count: (jobData.positions_count && Number(jobData.positions_count) > 0) ? Number(jobData.positions_count) : 1,
+      salary_min: (jobData.salary_min !== undefined && jobData.salary_min !== '' && jobData.salary_min !== null) ? Number(jobData.salary_min) : null,
+      salary_max: (jobData.salary_max !== undefined && jobData.salary_max !== '' && jobData.salary_max !== null) ? Number(jobData.salary_max) : null,
       is_pcd: !!jobData.is_pcd,
       status: jobData.status || 'Alinhamento',
       stage_sla_days: Number(jobData.stage_sla_days) || 4,
@@ -165,6 +183,8 @@ class DataStore {
       recruiter_email: jobData.recruiter_email || null,
       is_confidential: !!jobData.is_confidential,
       observation: jobData.observation || '',
+      description: jobData.description || '',
+      comment: jobData.comment || '',
       opened_at: new Date().toISOString(),
       closed_at: null
     };
@@ -268,6 +288,10 @@ class DataStore {
       email: candData.email.trim().toLowerCase(),
       phone: candData.phone || '',
       source: candData.source,
+      linkedin: candData.linkedin || '',
+      comment: candData.comment || '',
+      resume_url: candData.resume_url || null,
+      resume_name: candData.resume_name || null,
       created_at: new Date().toISOString()
     };
 
@@ -275,6 +299,39 @@ class DataStore {
     this.save();
     return { candidate: newCandidate, created: true };
   }
+
+  updateCandidate(candidateId, updates) {
+    const idx = this.candidates.findIndex(c => c.id === candidateId || (updates.originalEmail && c.email === updates.originalEmail));
+    if (idx === -1) return null;
+
+    const oldCand = this.candidates[idx];
+    const newEmail = updates.email ? updates.email.trim().toLowerCase() : oldCand.email;
+
+    this.candidates[idx] = {
+      ...oldCand,
+      full_name: updates.full_name !== undefined ? updates.full_name : oldCand.full_name,
+      email: newEmail,
+      phone: updates.phone !== undefined ? updates.phone : oldCand.phone,
+      source: updates.source !== undefined ? updates.source : oldCand.source,
+      linkedin: updates.linkedin !== undefined ? updates.linkedin : oldCand.linkedin,
+      comment: updates.comment !== undefined ? updates.comment : oldCand.comment,
+      resume_url: updates.resume_url !== undefined ? updates.resume_url : oldCand.resume_url,
+      resume_name: updates.resume_name !== undefined ? updates.resume_name : oldCand.resume_name
+    };
+
+    const updatedCand = this.candidates[idx];
+
+    // Sync candidate reference in applications list
+    this.applications.forEach(app => {
+      if (app.candidate_id === updatedCand.id || (app.candidate && app.candidate.email === oldCand.email)) {
+        app.candidate = { ...updatedCand };
+      }
+    });
+
+    this.save();
+    return updatedCand;
+  }
+
 
   // ---------------------------------------------------------------------------
   // Applications API (RN-02: Candidatura Exclusiva Vaga x Candidato)

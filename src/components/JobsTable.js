@@ -2,17 +2,17 @@
 // ATS PLURIX 360° | Componente Tabela Operacional de Vagas (Section 3 & 4 PRD)
 // =============================================================================
 
-import { store } from '../db/store.js';
+import { store, formatSalaryRange } from '../db/store.js';
 import { authService } from '../services/authService.js';
 
-export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClick) {
+export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClick, onEditJobClick) {
   const tbody = document.getElementById('jobs-table-body');
   if (!tbody) return;
 
   if (jobs.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 30px; color: var(--muted);">
+        <td colspan="12" style="text-align: center; padding: 30px; color: var(--muted);">
           Nenhuma vaga disponível para o perfil ativo.
         </td>
       </tr>
@@ -26,6 +26,7 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
     const jobAppsCount = allApps.filter(a => a.job_id === job.id).length;
     const canAssign = authService.canAssignRecruiter(job);
     const canDelete = authService.canDeleteJob(job);
+    const canEditJob = authService.canEditJobDetails(job);
 
     return `
       <tr class="job-table-row" data-job-id="${job.id}" style="cursor: pointer;">
@@ -35,7 +36,7 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
         <td>
           <div class="cell-main">
             ${job.title}
-            ${job.is_confidential ? '<span class="badge badge-confidential" style="margin-left: 6px;">🔒 Confidencial</span>' : ''}
+            ${job.is_confidential ? '<span class="badge badge-confidential" style="margin-left: 6px;">Confidencial</span>' : ''}
           </div>
           <div class="cell-sub">${job.selection_type} • ${job.headcount_type} ${job.is_pcd ? '• PCD' : ''}</div>
         </td>
@@ -56,6 +57,15 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
           `}
         </td>
         <td>
+          <span class="cell-main" style="font-weight: 600; color: var(--navy);">${formatSalaryRange(job.salary_min, job.salary_max)}</span>
+        </td>
+        <td>
+          <span class="cell-main">${job.work_model || 'Presencial'}</span>
+        </td>
+        <td>
+          <span class="cell-main" style="font-weight: 600;">${job.positions_count || 1} pos.</span>
+        </td>
+        <td>
           <span class="cell-main">${job.stage_sla_days} dias por etapa</span>
         </td>
         <td>
@@ -65,6 +75,11 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
           <span class="badge badge-a">${job.status}</span>
         </td>
         <td class="text-right" style="white-space: nowrap;">
+          ${canEditJob ? `
+            <button class="btn btn-secondary btn-sm btn-edit-job-table" data-job-id="${job.id}" title="Editar Informações da Vaga">
+              Editar
+            </button>
+          ` : ''}
           <button class="btn btn-secondary btn-sm btn-job-audit-table" data-job-id="${job.id}" title="Ver Detalhes e Auditoria da Vaga">
             Auditoria
           </button>
@@ -95,6 +110,15 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
     };
   });
 
+  tbody.querySelectorAll('.btn-edit-job-table').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (onEditJobClick) {
+        onEditJobClick(btn.dataset.jobId);
+      }
+    };
+  });
+
   tbody.querySelectorAll('.btn-assign-job').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
@@ -120,3 +144,4 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
     };
   });
 }
+

@@ -3,7 +3,7 @@
 // =============================================================================
 
 import * as XLSX from 'xlsx';
-import { store } from '../db/store.js';
+import { store, formatSalaryRange } from '../db/store.js';
 import { showToast } from '../components/Modals.js';
 
 function formatDate(dateStr) {
@@ -108,7 +108,9 @@ export function exportJobsToExcel(jobs, customFilename) {
       'Tipo de Seleção': job.selection_type || 'N/A',
       'Gestor Solicitante': job.hiring_manager || 'N/A',
       'Vaga PCD': job.is_pcd ? 'Sim' : 'Não',
-      'Confidencial': job.is_confidential ? 'Sim' : 'Não',
+      'Modelo de Trabalho': job.work_model || 'Presencial',
+      'Qtd. Posições': job.positions_count || 1,
+      'Faixa Salarial': formatSalaryRange(job.salary_min, job.salary_max),
       'Status da Vaga': job.status,
       'SLA Etapa (dias)': job.stage_sla_days,
       'Solicitante (Perfil)': job.opened_by_role,
@@ -172,7 +174,9 @@ export function exportAllToExcel(jobs, applications) {
         'Tipo de Seleção': job.selection_type || 'N/A',
         'Gestor Solicitante': job.hiring_manager || 'N/A',
         'Vaga PCD': job.is_pcd ? 'Sim' : 'Não',
-        'Confidencial': job.is_confidential ? 'Sim' : 'Não',
+        'Modelo de Trabalho': job.work_model || 'Presencial',
+        'Qtd. Posições': job.positions_count || 1,
+        'Faixa Salarial': formatSalaryRange(job.salary_min, job.salary_max),
         'Status da Vaga': job.status,
         'SLA Etapa (dias)': job.stage_sla_days,
         'BP Responsável': job.bp_in_charge_email,

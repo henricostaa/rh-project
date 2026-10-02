@@ -67,30 +67,56 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
   const sidebarToggle = document.getElementById('sidebar-toggle');
 
   const viewTitles = {
+    'dashboard': 'Painel Executivo',
     'kanban': 'Funil do Candidato',
     'jobs-kanban': 'Funil de Vagas',
     'applications': 'Tabela de Candidaturas',
     'jobs': 'Gestão de Vagas',
+    'talent-bank': 'Banco de Talentos',
     'indicators': 'Indicadores & Métricas'
   };
 
+  // Toggle visibility of global KPI section and controls section for views without global header
+  const kpiSection = document.querySelector('.kpi-section');
+  const controlsSection = document.querySelector('.controls-section');
+  const viewsWithoutGlobalHeader = ['dashboard', 'talent-bank', 'indicators'];
+  const hideHeader = viewsWithoutGlobalHeader.includes(currentView);
+
+  if (kpiSection) kpiSection.style.display = hideHeader ? 'none' : 'block';
+  if (controlsSection) controlsSection.style.display = hideHeader ? 'none' : 'block';
+
+  // Sync active tab state & panel visibility with currentView
+  tabBtns.forEach(btn => {
+    const isCurrent = btn.dataset.view === currentView;
+    btn.classList.toggle('active', isCurrent);
+    btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+  });
+
+  if (moduleTitleEl && viewTitles[currentView]) {
+    moduleTitleEl.textContent = viewTitles[currentView];
+  }
+
+  document.querySelectorAll('.view-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `view-${currentView}`);
+  });
+
   tabBtns.forEach(btn => {
     btn.onclick = () => {
-      tabBtns.forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
       const viewName = btn.dataset.view;
+
+      tabBtns.forEach(b => {
+        const isActive = b.dataset.view === viewName;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
 
       if (moduleTitleEl && viewTitles[viewName]) {
         moduleTitleEl.textContent = viewTitles[viewName];
       }
       
-      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
-      const activePanel = document.getElementById(`view-${viewName}`);
-      if (activePanel) activePanel.classList.add('active');
+      document.querySelectorAll('.view-panel').forEach(p => {
+        p.classList.toggle('active', p.id === `view-${viewName}`);
+      });
 
       // Close mobile sidebar on selection
       if (sidebar && sidebar.classList.contains('open')) {

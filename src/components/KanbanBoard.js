@@ -11,7 +11,7 @@ let draggedAppId = null;
 let draggedFromStage = null;
 let isDraggingCard = false;
 
-export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onDeleteClick) {
+export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onDeleteClick, onEditCandidateClick) {
   const container = document.getElementById('kanban-board');
   if (!container) return;
 
@@ -43,46 +43,51 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onD
             const canDelete = authService.canDeleteApplication(app, job);
 
             return `
-              <div class="kanban-card ${canMove ? 'draggable' : 'read-only'}"
+              <div class="kanban-card ${canMove ? 'draggable' : 'read-only'} ${sla.badgeClass}"
                    ${canMove ? 'draggable="true"' : ''}
                    data-app-id="${app.id}"
                    data-stage="${stage}">
                 <div class="card-top">
-                  <div style="display: flex; align-items: flex-start; gap: 6px;">
+                  <div style="display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0;">
                     ${canMove ? '<span class="drag-handle" title="Clique e arraste para mover">⋮⋮</span>' : ''}
-                    <div>
-                      <div class="candidate-name">${cand ? cand.full_name : 'Candidato Removido'}</div>
+                    <div style="min-width: 0; flex: 1;">
+                      <div class="candidate-name" title="${cand ? cand.full_name : 'Candidato Removido'}">
+                        ${cand ? cand.full_name : 'Candidato Removido'}
+                      </div>
+                      <div class="company-tag" style="margin-top: 3px;">
+                        <span class="badge badge-company" title="Empresa / Bandeira">
+                          ${job && job.business_unit ? job.business_unit : 'Empresa N/A'}
+                        </span>
+                      </div>
                       <div class="job-pill" style="margin-top: 4px;">
-                        ${job ? `${job.id} - ${job.title}` : 'Sem vaga'}
+                        <span class="job-code">${job ? job.id : 'N/A'}</span>
+                        <span class="job-title-text" title="${job ? job.title : 'Sem vaga'}">${job ? job.title : 'Sem vaga'}</span>
                       </div>
                     </div>
                   </div>
                   <span class="badge ${sla.badgeClass}">${sla.label}</span>
                 </div>
 
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                <div class="card-badges-row">
                   <span class="badge badge-neutral">${app.status}</span>
-                  ${job && job.is_confidential ? '<span class="badge badge-confidential">🔒 Confidencial</span>' : ''}
-                  ${cand && cand.source ? `<span class="badge badge-neutral">📍 ${cand.source}</span>` : ''}
+                  ${job && job.is_confidential ? '<span class="badge badge-confidential">Confidencial</span>' : ''}
+                  ${cand && cand.source ? `<span class="badge badge-neutral">${cand.source}</span>` : ''}
                 </div>
 
                 <div class="card-meta">
-                  <span>Recrutador: <b>${job && job.recruiter_email ? job.recruiter_email.split('@')[0] : 'Pendente'}</b></span>
-                  <div class="card-actions" style="gap: 4px;">
+                  <div class="recruiter-info" title="Recrutador responsável: ${job && job.recruiter_email ? job.recruiter_email : 'Pendente'}">
+                    <span class="avatar-circle">${job && job.recruiter_email ? job.recruiter_email.charAt(0).toUpperCase() : 'P'}</span>
+                    <span class="recruiter-text">Recrutador: <b>${job && job.recruiter_email ? job.recruiter_email.split('@')[0] : 'Pendente'}</b></span>
+                  </div>
+                  <div class="card-actions">
+                    <button class="btn btn-secondary btn-sm btn-edit-cand-kanban" data-cand-id="${cand ? cand.id : ''}" data-cand-email="${cand ? cand.email : ''}" title="Editar Informações do Candidato">
+                      Editar
+                    </button>
                     ${canDelete ? `
                       <button class="btn btn-danger-outline btn-sm btn-delete-app-card" data-app-id="${app.id}" title="Excluir Candidatura">
-                        🗑️
+                        Excluir
                       </button>
                     ` : ''}
-                    ${canMove ? `
-                      <button class="btn btn-primary btn-sm btn-move" data-app-id="${app.id}">
-                        Avançar &rarr;
-                      </button>
-                    ` : `
-                      <button class="btn btn-secondary btn-sm" disabled title="Sem permissão para movimentar (Apenas recrutadora atribuída)">
-                        Leitura
-                      </button>
-                    `}
                   </div>
                 </div>
               </div>
@@ -101,10 +106,12 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onD
     };
   });
 
-  container.querySelectorAll('.btn-move').forEach(btn => {
+  container.querySelectorAll('.btn-edit-cand-kanban').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
-      onMoveClick(btn.dataset.appId);
+      if (onEditCandidateClick) {
+        onEditCandidateClick(btn.dataset.candId || btn.dataset.candEmail);
+      }
     };
   });
 

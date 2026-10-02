@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { TAXONOMY, PERSONAS } from '../db/schema.js';
-import { store } from '../db/store.js';
+import { store, formatSalaryRange } from '../db/store.js';
 import { authService } from '../services/authService.js';
 import { jobService } from '../services/jobService.js';
 import { candidateService } from '../services/candidateService.js';
@@ -70,6 +70,47 @@ export function initModals(onSuccessRefresh) {
 
   // Setup Form 7: Vincular do Banco de Talentos a Vaga
   setupAttachJobModal(onSuccessRefresh);
+
+  // Setup Form 8: Editar Candidato
+  setupEditCandidateModal(onSuccessRefresh);
+
+  // Setup Form 9: Editar Vaga
+  setupEditJobModal(onSuccessRefresh);
+
+  // Rich Text Editor initializers
+  initRichTextEditors();
+}
+
+function initRichTextEditors() {
+  document.querySelectorAll('.rich-text-container').forEach(container => {
+    const content = container.querySelector('.rich-text-content');
+    if (!content) return;
+
+    container.querySelectorAll('.rich-text-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const cmd = btn.dataset.command;
+        if (cmd === 'createLink') {
+          const url = prompt('Insira o link da URL:');
+          if (url) document.execCommand(cmd, false, url);
+        } else if (cmd) {
+          document.execCommand(cmd, false, null);
+        }
+        content.focus();
+      };
+    });
+
+    container.querySelectorAll('.rich-text-select').forEach(sel => {
+      sel.onchange = () => {
+        const cmd = sel.dataset.command;
+        const val = sel.value;
+        if (cmd && val) {
+          document.execCommand(cmd, false, val);
+        }
+        content.focus();
+      };
+    });
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -93,11 +134,17 @@ export function openNewJobModal() {
   hcSelect.innerHTML = TAXONOMY.headcountTypes.map(h => `<option value="${h}">${h}</option>`).join('');
   selSelect.innerHTML = TAXONOMY.selectionTypes.map(s => `<option value="${s}">${s}</option>`).join('');
 
+  const wmSelect = document.getElementById('job-work-model');
+  if (wmSelect) {
+    wmSelect.innerHTML = TAXONOMY.workModels.map(wm => `<option value="${wm}">${wm}</option>`).join('');
+  }
+
   const recruiters = PERSONAS.filter(p => p.role === 'RECRUTADOR' || p.role === 'BP');
   recSelect.innerHTML = '<option value="">Sem recrutadora atribuída (Pendente)</option>' +
     recruiters.map(r => `<option value="${r.email}">${r.name} (${r.email})</option>`).join('');
 
   document.getElementById('form-job').reset();
+  if (document.getElementById('job-description')) document.getElementById('job-description').innerHTML = '';
   modal.classList.add('open');
 }
 
@@ -115,9 +162,14 @@ function setupJobModal(onSuccessRefresh) {
         hiring_manager: document.getElementById('job-hiring-manager').value,
         headcount_type: document.getElementById('job-headcount-type').value,
         selection_type: document.getElementById('job-selection-type').value,
+        work_model: document.getElementById('job-work-model') ? document.getElementById('job-work-model').value : 'Presencial',
+        positions_count: document.getElementById('job-positions-count') ? Number(document.getElementById('job-positions-count').value) : 1,
+        salary_min: document.getElementById('job-salary-min') ? document.getElementById('job-salary-min').value : null,
+        salary_max: document.getElementById('job-salary-max') ? document.getElementById('job-salary-max').value : null,
         stage_sla_days: document.getElementById('job-sla-days').value,
         recruiter_email: document.getElementById('job-recruiter').value || null,
         observation: document.getElementById('job-observation').value || '',
+        description: document.getElementById('job-description') ? document.getElementById('job-description').innerHTML : '',
         is_pcd: document.getElementById('job-is-pcd').checked,
         is_confidential: document.getElementById('job-is-confidential').checked
       };
@@ -131,6 +183,9 @@ function setupJobModal(onSuccessRefresh) {
     }
   };
 }
+
+let newCandResumeFile = null;
+let editCandResumeFile = null;
 
 // -----------------------------------------------------------------------------
 // Modal 2: Novo Candidato
@@ -152,12 +207,41 @@ export function openNewCandidateModal() {
   `).join('');
 
   document.getElementById('form-candidate').reset();
+  if (document.getElementById('cand-resume-name')) document.getElementById('cand-resume-name').textContent = '';
+  if (document.getElementById('btn-remove-cand-resume')) document.getElementById('btn-remove-cand-resume').style.display = 'none';
+  newCandResumeFile = null;
+
   modal.classList.add('open');
 }
 
 function setupCandidateModal(onSuccessRefresh) {
   const form = document.getElementById('form-candidate');
   if (!form) return;
+
+  const triggerBtn = document.getElementById('btn-trigger-cand-resume');
+  const fileInput = document.getElementById('cand-resume-file');
+  const nameSpan = document.getElementById('cand-resume-name');
+  const removeBtn = document.getElementById('btn-remove-cand-resume');
+
+  if (triggerBtn && fileInput) {
+    triggerBtn.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+      if (fileInput.files.length > 0) {
+        newCandResumeFile = fileInput.files[0];
+        if (nameSpan) nameSpan.textContent = `📎 ${newCandResumeFile.name}`;
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+      }
+    };
+  }
+
+  if (removeBtn && fileInput) {
+    removeBtn.onclick = () => {
+      fileInput.value = '';
+      newCandResumeFile = null;
+      if (nameSpan) nameSpan.textContent = '';
+      removeBtn.style.display = 'none';
+    };
+  }
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -167,13 +251,17 @@ function setupCandidateModal(onSuccessRefresh) {
         email: document.getElementById('cand-email').value,
         full_name: document.getElementById('cand-name').value,
         phone: document.getElementById('cand-phone').value,
-        source: document.getElementById('cand-source').value
+        source: document.getElementById('cand-source').value,
+        linkedin: document.getElementById('cand-linkedin') ? document.getElementById('cand-linkedin').value : '',
+        comment: document.getElementById('cand-comment') ? document.getElementById('cand-comment').value : '',
+        resume_name: newCandResumeFile ? newCandResumeFile.name : null,
+        resume_url: newCandResumeFile ? `files/${newCandResumeFile.name}` : null
       };
 
       const result = await candidateService.registerCandidateAndApplication(payload);
       const msg = result.isNewCandidate
         ? `Candidato ${result.candidate.full_name} cadastrado e vinculado à vaga!`
-        : `Cadastro de ${result.candidate.full_name} reutilizado (RN-01) e vinculado à vaga!`;
+        : `Cadastro de ${result.candidate.full_name} vinculado à vaga com sucesso!`;
 
       showToast(msg, 'success');
       document.getElementById('modal-candidate').classList.remove('open');
@@ -360,12 +448,22 @@ export function openJobDetailsModal(jobId) {
   const obsInput = document.getElementById('details-status-observation');
   if (obsInput) obsInput.value = '';
 
+  const headerActionsContainer = document.getElementById('job-details-header-actions');
+  if (headerActionsContainer) {
+    headerActionsContainer.innerHTML = authService.canEditJobDetails(job) ? `
+      <button type="button" id="btn-open-edit-job-from-details" class="btn btn-outline-light btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Editar Vaga
+      </button>
+    ` : '';
+  }
+
   const infoContainer = document.getElementById('job-details-info');
   const canEditStatus = authService.canEditJobStatus(job);
   const canAssign = authService.canAssignRecruiter(job);
 
   infoContainer.innerHTML = `
-    <div class="job-details-item span-2" style="grid-column: span 2; display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+    <div class="job-details-badges-row" style="grid-column: span 2; display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; flex-wrap: wrap !important; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--brd2);">
       <span class="badge badge-a">Status: ${job.status}</span>
       <span class="badge badge-neutral">${jobAppsCount} candidatura(s)</span>
       <span class="badge badge-neutral">${job.headcount_type}</span>
@@ -384,8 +482,26 @@ export function openJobDetailsModal(jobId) {
       </div>
     ` : ''}
 
+    ${job.description ? `
+      <div class="job-details-item span-2" style="grid-column: span 2; background: #f8fafc; border: 1px solid var(--brd); padding: 12px; border-radius: var(--rs);">
+        <span class="job-details-label" style="color: var(--navy); font-weight: 700; display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+          📝 Descrição da Vaga
+        </span>
+        <div class="job-details-value" style="color: var(--text); font-size: 0.85rem; line-height: 1.5;">${job.description}</div>
+      </div>
+    ` : ''}
+
+    ${job.comment ? `
+      <div class="job-details-item span-2" style="grid-column: span 2; background: #f0f7ff; border: 1px solid #bae6fd; padding: 10px 12px; border-radius: var(--rs);">
+        <span class="job-details-label" style="color: #0369a1; font-weight: 700; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+          💬 Comentário Registrado
+        </span>
+        <div class="job-details-value" style="color: #0c4a6e; font-size: 0.82rem;">"${job.comment}"</div>
+      </div>
+    ` : ''}
+
     <div class="job-details-item">
-      <span class="job-details-label">Negócio / Empresa</span>
+      <span class="job-details-label">Negócio / Empresa / Bandeira</span>
       <span class="job-details-value">${job.business_unit}</span>
     </div>
 
@@ -397,6 +513,21 @@ export function openJobDetailsModal(jobId) {
     <div class="job-details-item">
       <span class="job-details-label">Gestor Solicitante</span>
       <span class="job-details-value">${job.hiring_manager || 'Não informado'}</span>
+    </div>
+
+    <div class="job-details-item">
+      <span class="job-details-label">Modelo de Trabalho</span>
+      <span class="job-details-value" style="font-weight: 600; color: var(--navy);">${job.work_model || 'Presencial'}</span>
+    </div>
+
+    <div class="job-details-item">
+      <span class="job-details-label">Qtd. de Posições</span>
+      <span class="job-details-value" style="font-weight: 600; color: var(--navy);">${job.positions_count || 1} vaga(s)</span>
+    </div>
+
+    <div class="job-details-item">
+      <span class="job-details-label">Faixa Salarial</span>
+      <span class="job-details-value" style="font-weight: 600; color: var(--navy);">${formatSalaryRange(job.salary_min, job.salary_max)}</span>
     </div>
 
     <div class="job-details-item">
@@ -414,6 +545,14 @@ export function openJobDetailsModal(jobId) {
       <span class="job-details-value">${job.recruiter_email || 'Pendente'}</span>
     </div>
   `;
+
+  const btnEditFromDetails = modal.querySelector('#btn-open-edit-job-from-details');
+  if (btnEditFromDetails) {
+    btnEditFromDetails.onclick = () => {
+      modal.classList.remove('open');
+      openEditJobModal(job.id);
+    };
+  }
 
   // Render candidates participating in this job
   const candidatesContainer = document.getElementById('job-details-candidates');
@@ -475,6 +614,9 @@ export function openJobDetailsModal(jobId) {
                         <span class="badge badge-a" style="font-size: 0.7rem;">${app.status}</span>
                       </td>
                       <td class="text-right" style="white-space: nowrap;">
+                        <button class="btn btn-secondary btn-sm btn-job-modal-edit-cand" data-cand-id="${cand ? cand.id : ''}" data-cand-email="${cand ? cand.email : ''}" title="Editar informações do candidato">
+                          Editar
+                        </button>
                         ${canMove ? `
                           <button class="btn btn-primary btn-sm btn-job-modal-move" data-app-id="${app.id}" title="Movimentar Etapa">
                             Etapa &rarr;
@@ -498,7 +640,14 @@ export function openJobDetailsModal(jobId) {
         </div>
       `;
 
-      // Attach event listeners for move stage, audit, and delete buttons
+      // Attach event listeners for move stage, edit candidate, audit, and delete buttons
+      candidatesContainer.querySelectorAll('.btn-job-modal-edit-cand').forEach(btn => {
+        btn.onclick = () => {
+          modal.classList.remove('open');
+          openEditCandidateModal(btn.dataset.candId || btn.dataset.candEmail);
+        };
+      });
+
       candidatesContainer.querySelectorAll('.btn-job-modal-move').forEach(btn => {
         btn.onclick = () => {
           modal.classList.remove('open');
@@ -630,16 +779,10 @@ export function openJobDetailsModal(jobId) {
     saveBtn.title = '';
   }
 
-  // Render Delete Job Button inside Modal Footer if authorized
+  // Modal Footer
   const modalFooter = modal.querySelector('.modal-footer');
   if (modalFooter) {
-    const canDelete = authService.canDeleteJob(job);
     modalFooter.innerHTML = `
-      ${canDelete ? `
-        <button type="button" id="btn-job-details-delete" class="btn btn-danger-outline" style="margin-right: auto;">
-          🗑️ Excluir Vaga
-        </button>
-      ` : ''}
       <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
     `;
 
@@ -647,23 +790,6 @@ export function openJobDetailsModal(jobId) {
     modalFooter.querySelectorAll('[data-close-modal]').forEach(b => {
       b.onclick = () => modal.classList.remove('open');
     });
-
-    const deleteBtn = modalFooter.querySelector('#btn-job-details-delete');
-    if (deleteBtn) {
-      deleteBtn.onclick = () => {
-        openConfirmDeleteModal({
-          title: `Excluir Vaga ${job.id}`,
-          message: `Tem certeza que deseja excluir permanentemente a vaga <strong>${job.id}: ${job.title}</strong>?`,
-          details: `Esta ação excluirá a vaga, todo o histórico de auditoria e ${jobAppsCount} candidatura(s) vinculada(s).`,
-          onConfirm: async () => {
-            await jobService.deleteJob(job.id);
-            showToast(`Vaga ${job.id} excluída com sucesso!`, 'success');
-            modal.classList.remove('open');
-            onSuccessRefresh();
-          }
-        });
-      };
-    }
   }
 
   modal.classList.add('open');
@@ -734,6 +860,22 @@ export function openConfirmDeleteModal({ title, message, details, onConfirm }) {
   const titleEl = document.getElementById('confirm-delete-title');
   const msgEl = document.getElementById('confirm-delete-message');
   const detailsEl = document.getElementById('confirm-delete-details');
+  const footerEl = modal.querySelector('.modal-footer');
+
+  // Restore standard confirmation action footer HTML for general deletions (Jobs, etc.)
+  if (footerEl) {
+    footerEl.innerHTML = `
+      <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+      <button type="button" id="btn-confirm-delete-action" class="btn btn-danger">
+        Sim, Excluir Definitivamente
+      </button>
+    `;
+
+    footerEl.querySelectorAll('[data-close-modal]').forEach(b => {
+      b.onclick = () => modal.classList.remove('open');
+    });
+  }
+
   const actionBtn = document.getElementById('btn-confirm-delete-action');
 
   if (titleEl) {
@@ -884,11 +1026,11 @@ export function openDeleteChoiceModal({ candName, candEmail, jobTitle, onRemoveF
 
   if (footerEl) {
     footerEl.innerHTML = `
-      <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
-      <button type="button" id="btn-choice-remove-job" class="btn btn-secondary" style="border-color: var(--navy); color: var(--navy);">
+      <button type="button" class="btn btn-secondary" data-close-modal style="flex-shrink: 0;">Cancelar</button>
+      <button type="button" id="btn-choice-remove-job" class="btn btn-secondary" style="border-color: var(--navy); color: var(--navy); white-space: nowrap; flex-shrink: 0;">
         Remover Apenas da Vaga
       </button>
-      <button type="button" id="btn-choice-delete-perm" class="btn btn-danger">
+      <button type="button" id="btn-choice-delete-perm" class="btn btn-danger" style="white-space: nowrap; flex-shrink: 0;">
         Excluir do Banco de Talentos
       </button>
     `;
@@ -928,4 +1070,210 @@ export function openDeleteChoiceModal({ candName, candEmail, jobTitle, onRemoveF
 
   modal.classList.add('open');
 }
+
+// -----------------------------------------------------------------------------
+// Modal 9: Editar Candidato
+// -----------------------------------------------------------------------------
+export function openEditCandidateModal(candidateIdOrEmail) {
+  const modal = document.getElementById('modal-edit-candidate');
+  if (!modal) return;
+
+  const candidate = store.getCandidates().find(c => c.id === candidateIdOrEmail || c.email === candidateIdOrEmail);
+  if (!candidate) {
+    showToast('Candidato não encontrado.', 'error');
+    return;
+  }
+
+  document.getElementById('edit-cand-id').value = candidate.id || '';
+  document.getElementById('edit-cand-original-email').value = candidate.email || '';
+  document.getElementById('edit-cand-name').value = candidate.full_name || '';
+  document.getElementById('edit-cand-email').value = candidate.email || '';
+  document.getElementById('edit-cand-phone').value = candidate.phone || '';
+  document.getElementById('edit-cand-source').value = candidate.source || 'LinkedIn';
+
+  if (document.getElementById('edit-cand-linkedin')) {
+    document.getElementById('edit-cand-linkedin').value = candidate.linkedin || '';
+  }
+  if (document.getElementById('edit-cand-comment')) {
+    document.getElementById('edit-cand-comment').value = candidate.comment || '';
+  }
+
+  const nameSpan = document.getElementById('edit-cand-resume-name');
+  const removeBtn = document.getElementById('btn-remove-edit-cand-resume');
+  if (candidate.resume_name) {
+    if (nameSpan) nameSpan.textContent = `📎 ${candidate.resume_name}`;
+    if (removeBtn) removeBtn.style.display = 'inline-block';
+  } else {
+    if (nameSpan) nameSpan.textContent = '';
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+  editCandResumeFile = null;
+
+  modal.classList.add('open');
+}
+
+function setupEditCandidateModal(onSuccessRefresh) {
+  const form = document.getElementById('form-edit-candidate');
+  if (!form) return;
+
+  const triggerBtn = document.getElementById('btn-trigger-edit-cand-resume');
+  const fileInput = document.getElementById('edit-cand-resume-file');
+  const nameSpan = document.getElementById('edit-cand-resume-name');
+  const removeBtn = document.getElementById('btn-remove-edit-cand-resume');
+
+  if (triggerBtn && fileInput) {
+    triggerBtn.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+      if (fileInput.files.length > 0) {
+        editCandResumeFile = fileInput.files[0];
+        if (nameSpan) nameSpan.textContent = `📎 ${editCandResumeFile.name}`;
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+      }
+    };
+  }
+
+  if (removeBtn && fileInput) {
+    removeBtn.onclick = () => {
+      fileInput.value = '';
+      editCandResumeFile = null;
+      if (nameSpan) nameSpan.textContent = '';
+      removeBtn.style.display = 'none';
+    };
+  }
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const candidateId = document.getElementById('edit-cand-id').value;
+      const originalEmail = document.getElementById('edit-cand-original-email').value;
+      const existingCand = store.getCandidates().find(c => c.id === candidateId || c.email === originalEmail);
+
+      let resumeName = existingCand ? existingCand.resume_name : null;
+      let resumeUrl = existingCand ? existingCand.resume_url : null;
+
+      if (editCandResumeFile) {
+        resumeName = editCandResumeFile.name;
+        resumeUrl = `files/${editCandResumeFile.name}`;
+      } else if (nameSpan && !nameSpan.textContent) {
+        resumeName = null;
+        resumeUrl = null;
+      }
+
+      const payload = {
+        originalEmail,
+        full_name: document.getElementById('edit-cand-name').value,
+        email: document.getElementById('edit-cand-email').value,
+        phone: document.getElementById('edit-cand-phone').value,
+        source: document.getElementById('edit-cand-source').value,
+        linkedin: document.getElementById('edit-cand-linkedin') ? document.getElementById('edit-cand-linkedin').value : '',
+        comment: document.getElementById('edit-cand-comment') ? document.getElementById('edit-cand-comment').value : '',
+        resume_name: resumeName,
+        resume_url: resumeUrl
+      };
+
+      await candidateService.updateCandidate(candidateId, payload);
+      showToast(`Informações de "${payload.full_name}" atualizadas com sucesso!`, 'success');
+      document.getElementById('modal-edit-candidate').classList.remove('open');
+      onSuccessRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Modal 10: Editar Vaga
+// -----------------------------------------------------------------------------
+export function openEditJobModal(jobId) {
+  const modal = document.getElementById('modal-edit-job');
+  const job = store.getJobById(jobId);
+  if (!modal || !job) return;
+
+  if (!authService.canEditJobDetails(job)) {
+    showToast('Permissão negada: Somente a Gestora de RH, BP responsável ou recrutadora atribuída podem editar os dados desta vaga.', 'warning');
+    return;
+  }
+
+  document.getElementById('edit-job-id').value = job.id;
+  document.getElementById('edit-job-title').value = job.title || '';
+  document.getElementById('edit-job-hiring-manager').value = job.hiring_manager || '';
+  document.getElementById('edit-job-sla-days').value = job.stage_sla_days || 4;
+  if (document.getElementById('edit-job-salary-min')) document.getElementById('edit-job-salary-min').value = job.salary_min !== null && job.salary_min !== undefined ? job.salary_min : '';
+  if (document.getElementById('edit-job-salary-max')) document.getElementById('edit-job-salary-max').value = job.salary_max !== null && job.salary_max !== undefined ? job.salary_max : '';
+  if (document.getElementById('edit-job-observation')) document.getElementById('edit-job-observation').value = job.observation || '';
+  if (document.getElementById('edit-job-description')) document.getElementById('edit-job-description').innerHTML = job.description || '';
+
+  document.getElementById('edit-job-is-pcd').checked = !!job.is_pcd;
+  document.getElementById('edit-job-is-confidential').checked = !!job.is_confidential;
+
+  const buSelect = document.getElementById('edit-job-business-unit');
+  buSelect.innerHTML = TAXONOMY.businessUnits.map(b => `<option value="${b}" ${b === job.business_unit ? 'selected' : ''}>${b}</option>`).join('');
+
+  const deptSelect = document.getElementById('edit-job-department');
+  deptSelect.innerHTML = TAXONOMY.departments.map(d => `<option value="${d}" ${d === job.department ? 'selected' : ''}>${d}</option>`).join('');
+
+  const hcSelect = document.getElementById('edit-job-headcount-type');
+  hcSelect.innerHTML = TAXONOMY.headcountTypes.map(h => `<option value="${h}" ${h === job.headcount_type ? 'selected' : ''}>${h}</option>`).join('');
+
+  const selSelect = document.getElementById('edit-job-selection-type');
+  selSelect.innerHTML = TAXONOMY.selectionTypes.map(s => `<option value="${s}" ${s === job.selection_type ? 'selected' : ''}>${s}</option>`).join('');
+
+  const wmSelect = document.getElementById('edit-job-work-model');
+  if (wmSelect) {
+    wmSelect.innerHTML = TAXONOMY.workModels.map(wm => `<option value="${wm}" ${wm === (job.work_model || 'Presencial') ? 'selected' : ''}>${wm}</option>`).join('');
+  }
+
+  if (document.getElementById('edit-job-positions-count')) {
+    document.getElementById('edit-job-positions-count').value = job.positions_count || 1;
+  }
+
+  const statusSelect = document.getElementById('edit-job-status');
+  statusSelect.innerHTML = TAXONOMY.jobStatuses.map(st => `<option value="${st}" ${st === job.status ? 'selected' : ''}>${st}</option>`).join('');
+
+  const recSelect = document.getElementById('edit-job-recruiter');
+  const recruiters = PERSONAS.filter(p => p.role === 'RECRUTADOR' || p.role === 'BP');
+  recSelect.innerHTML = '<option value="">Sem recrutadora atribuída (Pendente)</option>' +
+    recruiters.map(r => `<option value="${r.email}" ${r.email === job.recruiter_email ? 'selected' : ''}>${r.name} (${r.email})</option>`).join('');
+
+  modal.classList.add('open');
+}
+
+function setupEditJobModal(onSuccessRefresh) {
+  const form = document.getElementById('form-edit-job');
+  if (!form) return;
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const jobId = document.getElementById('edit-job-id').value;
+      const jobData = {
+        title: document.getElementById('edit-job-title').value,
+        business_unit: document.getElementById('edit-job-business-unit').value,
+        department: document.getElementById('edit-job-department').value,
+        hiring_manager: document.getElementById('edit-job-hiring-manager').value,
+        headcount_type: document.getElementById('edit-job-headcount-type').value,
+        selection_type: document.getElementById('edit-job-selection-type').value,
+        work_model: document.getElementById('edit-job-work-model') ? document.getElementById('edit-job-work-model').value : 'Presencial',
+        positions_count: document.getElementById('edit-job-positions-count') ? Number(document.getElementById('edit-job-positions-count').value) : 1,
+        salary_min: document.getElementById('edit-job-salary-min') ? document.getElementById('edit-job-salary-min').value : null,
+        salary_max: document.getElementById('edit-job-salary-max') ? document.getElementById('edit-job-salary-max').value : null,
+        stage_sla_days: document.getElementById('edit-job-sla-days').value,
+        recruiter_email: document.getElementById('edit-job-recruiter').value || null,
+        status: document.getElementById('edit-job-status').value,
+        observation: document.getElementById('edit-job-observation').value || '',
+        description: document.getElementById('edit-job-description') ? document.getElementById('edit-job-description').innerHTML : '',
+        is_pcd: document.getElementById('edit-job-is-pcd').checked,
+        is_confidential: document.getElementById('edit-job-is-confidential').checked
+      };
+
+      await jobService.updateJobDetails(jobId, jobData);
+      showToast(`Vaga ${jobId} ("${jobData.title}") atualizada com sucesso!`, 'success');
+      document.getElementById('modal-edit-job').classList.remove('open');
+      onSuccessRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+}
+
 

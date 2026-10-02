@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { TAXONOMY } from '../db/schema.js';
-import { store } from '../db/store.js';
+import { store, formatSalaryRange } from '../db/store.js';
 import { authService } from '../services/authService.js';
 import { showToast } from './Modals.js';
 
@@ -11,7 +11,7 @@ let draggedJobId = null;
 let draggedFromStatus = null;
 let isDraggingJobCard = false;
 
-export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, onJobClick, onDeleteJobClick) {
+export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, onJobClick, onDeleteJobClick, onEditJobClick) {
   const container = document.getElementById('jobs-kanban-board');
   if (!container) return;
 
@@ -41,18 +41,20 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
             const canEditStatus = authService.canEditJobStatus(job);
             const canAssign = authService.canAssignRecruiter(job);
             const canDelete = authService.canDeleteJob(job);
+            const canEditJob = authService.canEditJobDetails(job);
 
             return `
-              <div class="kanban-card ${canEditStatus ? 'draggable' : 'read-only'}"
+              <div class="kanban-card job-card ${canEditStatus ? 'draggable' : 'read-only'}"
                    ${canEditStatus ? 'draggable="true"' : ''}
                    data-job-id="${job.id}"
                    data-status="${status}">
                 <div class="card-top">
-                  <div style="display: flex; align-items: flex-start; gap: 6px;">
+                  <div style="display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0;">
                     ${canEditStatus ? '<span class="drag-handle" title="Clique e arraste para alterar o status da vaga">⋮⋮</span>' : ''}
-                    <div>
-                      <div class="candidate-name" style="font-family: var(--font-heading); flex-wrap: wrap;">
-                        <span style="color: var(--navy); font-weight: 700;">${job.id}</span> • ${job.title}
+                    <div style="min-width: 0; flex: 1;">
+                      <div class="job-card-header">
+                        <span class="job-code-badge">${job.id}</span>
+                        <span class="job-card-title" title="${job.title}">${job.title}</span>
                       </div>
                       <div class="job-pill" style="margin-top: 4px;">
                         ${job.business_unit} • ${job.department}
@@ -61,51 +63,40 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
                   </div>
                 </div>
 
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                <div class="card-badges-row">
                   <span class="badge badge-neutral">${jobAppsCount} candidato(s)</span>
+                  <span class="badge badge-neutral" style="background: #f0f9ff; color: #0369a1; border-color: #bae6fd;">💰 ${formatSalaryRange(job.salary_min, job.salary_max)}</span>
+                  <span class="badge badge-neutral" style="background: #f8fafc; color: #334155;">📍 ${job.work_model || 'Presencial'}</span>
+                  <span class="badge badge-neutral" style="background: #fdf4ff; color: #86198f; border-color: #f5d0fe;">👥 ${job.positions_count || 1} pos.</span>
                   <span class="badge badge-neutral">${job.headcount_type}</span>
-                  ${job.is_pcd ? '<span class="badge badge-a">♿ PCD</span>' : ''}
-                  ${job.is_confidential ? '<span class="badge badge-confidential">🔒 Confidencial</span>' : ''}
+                  ${job.is_pcd ? '<span class="badge badge-a">PCD</span>' : ''}
+                  ${job.is_confidential ? '<span class="badge badge-confidential">Confidencial</span>' : ''}
                 </div>
 
                 ${job.observation ? `
-                  <div style="font-size: 0.72rem; color: #595959; font-style: italic; margin-top: 4px; background: #fffbe6; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffe58f; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${job.observation}">
-                    📝 "${job.observation}"
+                  <div class="card-obs-box" title="${job.observation}">
+                    <span class="obs-text">"${job.observation}"</span>
                   </div>
                 ` : ''}
 
-                <div class="card-meta" style="flex-direction: column; align-items: flex-start; gap: 6px;">
-                  <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.74rem;">
-                    <span>BP: <b>${job.bp_in_charge_email ? job.bp_in_charge_email.split('@')[0] : 'N/A'}</b></span>
-                    <span>Recrutador: <b>${job.recruiter_email ? job.recruiter_email.split('@')[0] : 'Pendente'}</b></span>
+                <div class="card-meta job-card-meta">
+                  <div class="job-people-grid">
+                    <span class="person-tag" title="Business Partner: ${job.bp_in_charge_email || 'N/A'}">BP: <b>${job.bp_in_charge_email ? job.bp_in_charge_email.split('@')[0] : 'N/A'}</b></span>
+                    <span class="person-tag" title="Recrutador: ${job.recruiter_email || 'Pendente'}">Recrutador: <b>${job.recruiter_email ? job.recruiter_email.split('@')[0] : 'Pendente'}</b></span>
                   </div>
                   
-                  <div class="card-actions" style="width: 100%; justify-content: flex-end; gap: 6px; margin-top: 4px;">
+                  <div class="card-actions job-card-actions">
+                    ${canEditJob ? `
+                      <button class="btn btn-secondary btn-sm btn-edit-job-kanban" data-job-id="${job.id}" title="Editar Informações da Vaga">
+                        Editar
+                      </button>
+                    ` : ''}
+
                     ${canDelete ? `
                       <button class="btn btn-danger-outline btn-sm btn-delete-job-kanban" data-job-id="${job.id}" title="Excluir Vaga">
-                        🗑️
+                        Excluir
                       </button>
                     ` : ''}
-
-                    <button class="btn btn-secondary btn-sm btn-job-audit-kanban" data-job-id="${job.id}" title="Ver Detalhes e Auditoria da Vaga">
-                      Auditoria
-                    </button>
-
-                    ${canAssign ? `
-                      <button class="btn btn-secondary btn-sm btn-assign-recruiter-kanban" data-job-id="${job.id}" title="Atribuir Recrutadora">
-                        Atribuir
-                      </button>
-                    ` : ''}
-
-                    ${canEditStatus ? `
-                      <button class="btn btn-primary btn-sm btn-move-job-status" data-job-id="${job.id}">
-                        Status &rarr;
-                      </button>
-                    ` : `
-                      <button class="btn btn-secondary btn-sm" disabled title="Sem permissão para alterar status desta vaga">
-                        Leitura
-                      </button>
-                    `}
                   </div>
                 </div>
               </div>
@@ -116,7 +107,7 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
     `;
   }).join('');
 
-  // Click handler for card click (opens Job Details Modal)
+  // Click handler for card click (opens Job Details Modal with audit, status, recruiter assignment, etc.)
   container.querySelectorAll('.kanban-card').forEach(card => {
     card.onclick = (e) => {
       if (isDraggingJobCard) return;
@@ -126,28 +117,12 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
     };
   });
 
-  // Click handler for card status change
-  container.querySelectorAll('.btn-move-job-status').forEach(btn => {
+  // Click handler for edit job
+  container.querySelectorAll('.btn-edit-job-kanban').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
-      onMoveStatusClick(btn.dataset.jobId);
-    };
-  });
-
-  // Click handler for recruiter assignment from kanban
-  container.querySelectorAll('.btn-assign-recruiter-kanban').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      onAssignClick(btn.dataset.jobId);
-    };
-  });
-
-  // Click handler for job audit modal from kanban
-  container.querySelectorAll('.btn-job-audit-kanban').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      if (onJobClick) {
-        onJobClick(btn.dataset.jobId);
+      if (onEditJobClick) {
+        onEditJobClick(btn.dataset.jobId);
       }
     };
   });

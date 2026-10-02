@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   hiring_manager TEXT,
   headcount_type TEXT NOT NULL DEFAULT 'Substituição',
   selection_type TEXT NOT NULL,
+  work_model TEXT NOT NULL DEFAULT 'Presencial',
+  positions_count INTEGER NOT NULL DEFAULT 1,
+  salary_min NUMERIC(10, 2),
+  salary_max NUMERIC(10, 2),
   is_pcd BOOLEAN NOT NULL DEFAULT false,
   status TEXT NOT NULL DEFAULT 'Alinhamento',
   stage_sla_days INTEGER NOT NULL DEFAULT 4,
@@ -24,6 +28,13 @@ CREATE TABLE IF NOT EXISTS jobs (
   closed_at TIMESTAMPTZ
 );
 
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_min NUMERIC(10, 2);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_max NUMERIC(10, 2);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_model TEXT DEFAULT 'Presencial';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS positions_count INTEGER DEFAULT 1;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS comment TEXT;
+
 -- 2. Tabela de Candidatos
 CREATE TABLE IF NOT EXISTS candidates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -31,8 +42,17 @@ CREATE TABLE IF NOT EXISTS candidates (
   email TEXT NOT NULL UNIQUE,
   phone TEXT,
   source TEXT NOT NULL,
+  linkedin TEXT,
+  comment TEXT,
+  resume_url TEXT,
+  resume_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS linkedin TEXT;
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_url TEXT;
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_name TEXT;
 
 -- 3. Tabela de Candidaturas
 CREATE TABLE IF NOT EXISTS applications (
