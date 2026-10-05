@@ -27,6 +27,7 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
     const canAssign = authService.canAssignRecruiter(job);
     const canDelete = authService.canDeleteJob(job);
     const canEditJob = authService.canEditJobDetails(job);
+    const jobSla = store.calculateJobSLA(job);
 
     return `
       <tr class="job-table-row" data-job-id="${job.id}" style="cursor: pointer;">
@@ -66,13 +67,14 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
           <span class="cell-main" style="font-weight: 600;">${job.positions_count || 1} pos.</span>
         </td>
         <td>
-          <span class="cell-main">${job.stage_sla_days} dias por etapa</span>
+          <div class="cell-main" style="font-weight: 600; color: var(--navy);">SLA Total: ${store.getJobTotalSLA(job)}d</div>
+          <div class="cell-sub" style="font-size: 0.72rem; color: var(--muted);">${jobSla.label}</div>
         </td>
         <td>
           <span class="badge badge-neutral">${jobAppsCount} candidaturas</span>
         </td>
         <td>
-          <span class="badge badge-a">${job.status}</span>
+          <span class="badge ${jobSla.badgeClass}">${job.status}</span>
         </td>
         <td class="text-right" style="white-space: nowrap;">
           ${canEditJob ? `

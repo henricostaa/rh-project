@@ -4,8 +4,9 @@
 
 import { store } from '../db/store.js';
 import { pipelineService } from '../services/pipelineService.js';
+import { candidateService } from '../services/candidateService.js';
 import { authService } from '../services/authService.js';
-import { openMoveStageModal, openEditCandidateModal } from './Modals.js';
+import { openMoveStageModal, openEditCandidateModal, openTransferCandidateJobModal, openConfirmDeleteModal, downloadResume, showToast } from './Modals.js';
 
 export function openAuditDrawer(applicationId) {
   const modal = document.getElementById('modal-audit') || document.getElementById('audit-drawer');
@@ -41,9 +42,16 @@ export function openAuditDrawer(applicationId) {
     <div style="font-size: 0.84rem; line-height: 1.6; background: #f8fafc; padding: 14px; border: 1px solid var(--brd); border-radius: var(--rs); margin-bottom: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
         <div>
-          <div><b>E-mail:</b> ${cand ? cand.email : '--'}</div>
+          <div><b>E-mail:</b> ${cand ? cand.email : '--'} | <b>Sexo / Gênero:</b> <span class="badge badge-neutral">${cand && cand.gender ? cand.gender : 'Não informado'}</span></div>
           <div><b>Empresa / Bandeira:</b> ${job && job.business_unit ? job.business_unit : 'N/A'} | <b>Diretoria:</b> ${job && job.department ? job.department : 'N/A'}</div>
           <div><b>Canal:</b> ${cand ? cand.source : '--'} | <b>Telefone:</b> ${cand && cand.phone ? cand.phone : '--'}</div>
+          ${cand && (cand.resume_url || cand.resume_name) ? `
+            <div style="margin-top: 3px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <b>Currículo:</b> 
+              <button type="button" id="btn-drawer-download-resume" style="background:none; border:none; padding:0; color: var(--primary-color, #00147d); text-decoration: underline; font-weight: 600; cursor: pointer;">📎 ${cand.resume_name || 'Visualizar / Baixar Currículo'}</button>
+              <button type="button" id="btn-drawer-remove-resume" style="background:none; border:none; padding:0; color: var(--danger, #ec221f); font-size: 0.78rem; font-weight: 600; cursor: pointer; text-decoration: underline;">🗑️ Remover</button>
+            </div>
+          ` : ''}
           <div style="margin-top: 4px;"><b>Etapa Atual:</b> <span class="badge badge-neutral">${app.current_stage}</span> | <b>Status:</b> <span class="badge badge-a">${app.status}</span></div>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -51,11 +59,38 @@ export function openAuditDrawer(applicationId) {
             <button type="button" id="btn-drawer-move-stage" class="btn btn-primary btn-sm">
               Etapa &rarr; Transicionar
             </button>
+            <button type="button" id="btn-drawer-transfer-job" class="btn btn-secondary btn-sm" title="Mover candidato para outra vaga">
+              Mover p/ Outra Vaga
+            </button>
           ` : ''}
         </div>
       </div>
     </div>
   `;
+
+  const btnDrawerResume = metaEl.querySelector('#btn-drawer-download-resume');
+  if (btnDrawerResume && cand) {
+    btnDrawerResume.onclick = () => {
+      downloadResume(cand.resume_url, cand.resume_name);
+    };
+  }
+
+  const btnDrawerRemoveResume = metaEl.querySelector('#btn-drawer-remove-resume');
+  if (btnDrawerRemoveResume && cand) {
+    btnDrawerRemoveResume.onclick = () => {
+      openConfirmDeleteModal({
+        title: 'Remover Currículo',
+        message: `Tem certeza que deseja remover o currículo de <strong>${cand.full_name}</strong>?`,
+        details: 'O arquivo de currículo será desvinculado deste candidato.',
+        onConfirm: async () => {
+          await candidateService.removeResume(cand.id || cand.email);
+          showToast('Currículo removido com sucesso!', 'success');
+          modal.classList.remove('open');
+          openAuditDrawer(applicationId);
+        }
+      });
+    };
+  }
 
   const btnEditCand = modal.querySelector('#btn-drawer-edit-cand');
   if (btnEditCand && cand) {
@@ -70,6 +105,14 @@ export function openAuditDrawer(applicationId) {
     btnMoveStage.onclick = () => {
       modal.classList.remove('open');
       openMoveStageModal(applicationId);
+    };
+  }
+
+  const btnTransferJob = metaEl.querySelector('#btn-drawer-transfer-job');
+  if (btnTransferJob) {
+    btnTransferJob.onclick = () => {
+      modal.classList.remove('open');
+      openTransferCandidateJobModal(applicationId);
     };
   }
 

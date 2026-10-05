@@ -1,11 +1,8 @@
-// =============================================================================
-// ATS PLURIX 360° | Componente Módulo Banco de Talentos
-// =============================================================================
-
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
+import { downloadResume, openCandidateHistoryModal } from './Modals.js';
 
-export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCandidateClick, onEditCandidateClick) {
+export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCandidateClick, onEditCandidateClick, onHistoryClick) {
   const tbody = document.getElementById('talent-bank-table-body');
   if (!tbody) return;
 
@@ -35,6 +32,16 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
       <tr>
         <td>
           <div class="cell-main" style="font-weight: 600; color: var(--navy);">${cand.full_name}</div>
+          <div style="margin-top: 2px;">
+            <span class="badge badge-neutral" style="font-size: 0.7rem;">${cand.gender || 'Não informado'}</span>
+          </div>
+          ${(cand.resume_url || cand.resume_name) ? `
+            <div style="margin-top: 4px;">
+              <button type="button" class="btn-download-resume-talent" data-cand-id="${cand.id}" style="background:none; border:none; padding:0; font-size: 0.75rem; color: var(--primary-color, #00147d); font-weight: 600; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" title="Visualizar / Baixar Currículo">
+                📎 ${cand.resume_name || 'Currículo'}
+              </button>
+            </div>
+          ` : ''}
         </td>
         <td>
           <div class="cell-main">${cand.email}</div>
@@ -53,6 +60,9 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
         </td>
         <td class="text-right" style="white-space: nowrap;">
           <div style="display: flex; gap: 6px; justify-content: flex-end;">
+            <button class="btn btn-secondary btn-sm btn-history-talent" data-cand-id="${cand.id}" data-cand-email="${cand.email}" title="Ver Histórico Completo de Auditoria">
+              Histórico
+            </button>
             <button class="btn btn-secondary btn-sm btn-edit-talent" data-cand-id="${cand.id}" data-cand-email="${cand.email}" title="Editar informações do candidato">
               Editar
             </button>
@@ -69,6 +79,19 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
       </tr>
     `;
   }).join('');
+
+  tbody.querySelectorAll('.btn-download-resume-talent').forEach(btn => {
+    btn.onclick = () => {
+      const cand = store.getCandidates().find(c => c.id === btn.dataset.candId);
+      if (cand) downloadResume(cand.resume_url, cand.resume_name);
+    };
+  });
+
+  tbody.querySelectorAll('.btn-history-talent').forEach(btn => {
+    btn.onclick = () => {
+      openCandidateHistoryModal(btn.dataset.candId || btn.dataset.candEmail);
+    };
+  });
 
   tbody.querySelectorAll('.btn-edit-talent').forEach(btn => {
     btn.onclick = () => {

@@ -8,7 +8,7 @@ import { supabaseService } from './supabaseService.js';
 import { isSupabaseConfigured } from '../db/supabaseClient.js';
 
 class CandidateService {
-  async registerCandidateAndApplication({ full_name, email, phone, source, linkedin, comment, resume_url, resume_name, job_id }) {
+  async registerCandidateAndApplication({ full_name, email, phone, source, gender, linkedin, comment, resume_url, resume_name, job_id }) {
     if (!email || !full_name || !job_id || !source) {
       throw new Error('Todos os campos obrigatórios devem ser preenchidos.');
     }
@@ -33,6 +33,7 @@ class CandidateService {
         email,
         phone,
         source,
+        gender: gender || 'Não informado',
         linkedin,
         comment,
         resume_url,
@@ -49,6 +50,7 @@ class CandidateService {
         email,
         phone,
         source,
+        gender: gender || 'Não informado',
         linkedin,
         comment,
         resume_url,
@@ -102,6 +104,57 @@ class CandidateService {
 
     store.syncCandidateAndApplication(updatedCand, null);
     return updatedCand;
+  }
+
+  async removeResume(candidateIdOrEmail) {
+    if (!authService.canEditCandidate()) {
+      throw new Error('Permissão negada: Você não possui permissão para alterar este candidato.');
+    }
+
+    const cand = store.getCandidates().find(c => c.id === candidateIdOrEmail || c.email === candidateIdOrEmail);
+    if (!cand) {
+      throw new Error('Candidato não encontrado.');
+    }
+
+    const updates = {
+      ...cand,
+      resume_name: null,
+      resume_url: null
+    };
+
+    return await this.updateCandidate(cand.id || cand.email, updates);
+  }
+
+  async transferCandidateToJob(applicationId, targetJobId, reason = '') {
+    const app = store.getApplicationById(applicationId);
+    if (!app) {
+      throw new Error('Candidatura não encontrada.');
+    }
+
+    if (!authService.canMoveApplication(app, app.job)) {
+      throw new Error('Permissão negada: Somente a recrutadora atribuída a esta vaga (ou BP em duplo papel) pode transferir o candidato.');
+    }
+
+    const targetJob = store.getJobById(targetJobId);
+    if (!targetJob) {
+      throw new Error('Vaga de destino não encontrada.');
+    }
+
+    if (!authService.canViewJob(targetJob)) {
+      throw new Error('RN-07: Você não possui acesso à vaga de destino.');
+    }
+
+    const currentPersona = authService.getPersona();
+
+    let updatedApp;
+    if (isSupabaseConfigured()) {
+      updatedApp = await supabaseService.transferApplicationJob(applicationId, targetJobId, reason, currentPersona.email);
+    } else {
+      updatedApp = store.transferApplicationJob(applicationId, targetJobId, reason, currentPersona.email);
+    }
+
+    store.syncApplication(updatedApp);
+    return updatedApp;
   }
 
   async deleteCandidate(candidateId, candidateEmail = null) {

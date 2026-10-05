@@ -113,6 +113,7 @@ export function exportJobsToExcel(jobs, customFilename) {
       'Faixa Salarial': formatSalaryRange(job.salary_min, job.salary_max),
       'Status da Vaga': job.status,
       'SLA Etapa (dias)': job.stage_sla_days,
+      'SLA Total Processo (dias)': store.getJobTotalSLA(job),
       'Solicitante (Perfil)': job.opened_by_role,
       'BP Responsável': job.bp_in_charge_email,
       'Recrutadora Atribuída': job.recruiter_email || 'Não Atribuída',
@@ -179,6 +180,7 @@ export function exportAllToExcel(jobs, applications) {
         'Faixa Salarial': formatSalaryRange(job.salary_min, job.salary_max),
         'Status da Vaga': job.status,
         'SLA Etapa (dias)': job.stage_sla_days,
+        'SLA Total Processo (dias)': store.getJobTotalSLA(job),
         'BP Responsável': job.bp_in_charge_email,
         'Recrutadora Atribuída': job.recruiter_email || 'Não Atribuída',
         'Total Candidaturas': jobApps.length,
@@ -220,9 +222,117 @@ export function exportAllToExcel(jobs, applications) {
     XLSX.utils.book_append_sheet(workbook, candSheet, 'Candidatos');
   }
 
+  // 3. Aba Admissões
+  const admissions = store.getAdmissions();
+  if (admissions && admissions.length > 0) {
+    const admRows = admissions.map(adm => {
+      const cand = adm.candidate || {};
+      const job = adm.job || {};
+      const sla = store.calculateAdmissionSLA(adm);
+      const chk = adm.checklist || {};
+      return {
+        'ID Admissão': adm.id,
+        'Nome do Candidato': cand.full_name || 'N/A',
+        'E-mail': cand.email || 'N/A',
+        'Código Vaga': job.id || 'N/A',
+        'Título da Vaga': job.title || 'N/A',
+        'Empresa': job.business_unit || 'N/A',
+        'Etapa Admissão': adm.current_stage,
+        'Status': adm.status,
+        'Data Prevista Início': adm.start_date || 'A definir',
+        'Salário': adm.salary ? Number(adm.salary) : '',
+        'Responsável': adm.responsible_email || 'RH',
+        'Status SLA': sla.label,
+        'Carta Oferta Gestor': chk.oferta_gestor_assinado ? 'Sim' : 'Não',
+        'Carta Oferta Candidato': chk.oferta_candidato_assinado ? 'Sim' : 'Não',
+        'Link Admissão': chk.link_admissao_status || 'Pendente',
+        'Exame ASO': chk.exame_aso_status || 'Pendente',
+        'Carta de Banco': chk.carta_banco_dispensada ? 'Dispensada' : (chk.carta_banco_emitida ? 'Emitida' : 'Pendente'),
+        'Chamado DP': chk.chamado_dp_status || 'Pendente',
+        'Ticket GLPI': chk.glpi_ticket_numero || 'Pendente',
+        'Status GLPI': chk.glpi_status || 'Pendente',
+        'Planilha Mestre': chk.planilha_inserida ? 'Sim' : 'Não',
+        'Matrícula': chk.matricula_gerada || 'Pendente'
+      };
+    });
+    const admSheet = XLSX.utils.json_to_sheet(admRows);
+    const keysA = Object.keys(admRows[0] || {});
+    admSheet['!cols'] = keysA.map(key => ({ wch: Math.min(Math.max(key.length + 3, 14), 40) }));
+    XLSX.utils.book_append_sheet(workbook, admSheet, 'Admissões');
+  }
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const fileName = `ATS_Plurix_Relatorio_Completo_${todayStr}.xlsx`;
   XLSX.writeFile(workbook, fileName);
 
   showToast('Relatório completo em Excel baixado com sucesso!', 'success');
 }
+
+/**
+ * Exporta a lista de admissões para Excel (.xlsx)
+ */
+export function exportAdmissionsToExcel(admissions, customFilename) {
+  if (!admissions || admissions.length === 0) {
+    showToast('Nenhum processo de admissão disponível para exportação.', 'warning');
+    return;
+  }
+
+  const rows = admissions.map(adm => {
+    const cand = adm.candidate || {};
+    const job = adm.job || {};
+    const sla = store.calculateAdmissionSLA(adm);
+    const chk = adm.checklist || {};
+
+    return {
+      'ID Admissão': adm.id,
+      'Nome do Candidato': cand.full_name || 'N/A',
+      'E-mail': cand.email || 'N/A',
+      'Telefone': cand.phone || 'N/A',
+      'Código Vaga': job.id || 'N/A',
+      'Título da Vaga': job.title || 'N/A',
+      'Empresa': job.business_unit || 'N/A',
+      'Diretoria': job.department || 'N/A',
+      'Etapa Admissão': adm.current_stage,
+      'Status': adm.status,
+      'Data Prevista Início': adm.start_date || 'A definir',
+      'Salário Acordado': adm.salary ? Number(adm.salary) : '',
+      'Responsável Admissão': adm.responsible_email || 'RH',
+      'SLA Status': sla.label,
+      'Carta Oferta Gestor Assinada': chk.oferta_gestor_assinado ? 'Sim' : 'Não',
+      'Carta Oferta Candidato Assinada': chk.oferta_candidato_assinado ? 'Sim' : 'Não',
+      'Link de Admissão': chk.link_admissao_status || 'Pendente',
+      'Protocolo Exame': chk.exame_protocolo || '',
+      'Status ASO': chk.exame_aso_status || 'Pendente',
+      'Carta de Banco': chk.carta_banco_dispensada ? 'Dispensada' : (chk.carta_banco_emitida ? 'Emitida' : 'Pendente'),
+      'Nº Chamado DP': chk.chamado_dp_numero || '',
+      'Status Chamado DP': chk.chamado_dp_status || 'Pendente',
+      'E-mail Boas-Vindas Enviado': chk.email_confirmacao_enviado ? 'Sim' : 'Não',
+      'Nº Ticket GLPI': chk.glpi_ticket_numero || '',
+      'Status GLPI': chk.glpi_status || 'Pendente',
+      'Inserido na Planilha Admissão': chk.planilha_inserida ? 'Sim' : 'Não',
+      'Matrícula Gerada': chk.matricula_gerada || '',
+      'Observações': adm.notes || ''
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const keys = Object.keys(rows[0] || {});
+  worksheet['!cols'] = keys.map(key => {
+    let maxLen = key.length;
+    rows.forEach(row => {
+      const val = String(row[key] || '');
+      if (val.length > maxLen) maxLen = val.length;
+    });
+    return { wch: Math.min(Math.max(maxLen + 3, 14), 40) };
+  });
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Funil de Admissão');
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const fileName = customFilename || `ATS_Plurix_Admissoes_${todayStr}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+
+  showToast(`Exportação de admissões concluída! ${rows.length} processo(s) exportado(s).`, 'success');
+}
+

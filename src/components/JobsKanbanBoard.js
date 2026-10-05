@@ -42,9 +42,10 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
             const canAssign = authService.canAssignRecruiter(job);
             const canDelete = authService.canDeleteJob(job);
             const canEditJob = authService.canEditJobDetails(job);
+            const jobSla = store.calculateJobSLA(job);
 
             return `
-              <div class="kanban-card job-card ${canEditStatus ? 'draggable' : 'read-only'}"
+              <div class="kanban-card job-card ${canEditStatus ? 'draggable' : 'read-only'} ${jobSla.badgeClass}"
                    ${canEditStatus ? 'draggable="true"' : ''}
                    data-job-id="${job.id}"
                    data-status="${status}">
@@ -61,6 +62,7 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
                       </div>
                     </div>
                   </div>
+                  <span class="badge ${jobSla.badgeClass}">${jobSla.label}</span>
                 </div>
 
                 <div class="card-badges-row">

@@ -11,14 +11,15 @@ import { pipelineService } from './services/pipelineService.js';
 
 
 import { candidateService } from './services/candidateService.js';
+import { admissionService } from './services/admissionService.js';
 import { renderLoginScreen } from './components/LoginScreen.js';
 import { renderTopbar } from './components/Topbar.js';
 import { renderKPIGrid } from './components/KPIGrid.js';
 import { renderFilterBar } from './components/FilterBar.js';
 import { renderKanbanBoard } from './components/KanbanBoard.js';
 import { renderJobsKanbanBoard } from './components/JobsKanbanBoard.js';
-import { renderCandidatesTable } from './components/CandidatesTable.js';
-import { renderJobsTable } from './components/JobsTable.js';
+import { renderAdmissionKanbanBoard } from './components/AdmissionKanbanBoard.js';
+
 import { renderTalentBankTable } from './components/TalentBankTable.js';
 import { renderIndicatorsModule } from './components/IndicatorsModule.js';
 import { renderExecutiveDashboard } from './components/ExecutiveDashboard.js';
@@ -36,10 +37,15 @@ import {
   openAttachToJobModal,
   openDeleteChoiceModal,
   openEditCandidateModal,
-  openEditJobModal
+  openEditJobModal,
+  openTransferCandidateJobModal,
+  openCandidateHistoryModal,
+  openNewAdmissionModal,
+  openAdmissionDetailsModal,
+  openMoveAdmissionStageModal
 } from './components/Modals.js';
 
-import { exportCandidatesToExcel, exportJobsToExcel, exportAllToExcel } from './services/exportService.js';
+import { exportCandidatesToExcel, exportJobsToExcel, exportAllToExcel, exportAdmissionsToExcel } from './services/exportService.js';
 
 // Application State
 const state = {
@@ -81,6 +87,7 @@ function refreshUI() {
   const jobs = jobService.getVisibleJobs();
   const applications = pipelineService.getVisibleApplications();
   const allCandidates = store.getCandidates();
+  const admissions = admissionService.getVisibleAdmissions();
 
   // 3. Apply Filters
   const searchLower = state.filters.search.toLowerCase().trim();
@@ -134,6 +141,38 @@ function refreshUI() {
       const matchSource = c.source && c.source.toLowerCase().includes(searchLower);
       if (!matchName && !matchEmail && !matchPhone && !matchSource) return false;
     }
+    return true;
+  });
+
+  const filteredAdmissions = admissions.filter(adm => {
+    const job = adm.job;
+    const cand = adm.candidate;
+
+    if (state.filters.department && job && job.department !== state.filters.department) return false;
+    if (state.filters.recruiter) {
+      const matchResp = adm.responsible_email === state.filters.recruiter;
+      const matchRec = job && job.recruiter_email === state.filters.recruiter;
+      if (!matchResp && !matchRec) return false;
+    }
+    if (state.filters.confidential === 'REGULAR' && job && job.is_confidential) return false;
+    if (state.filters.confidential === 'CONFIDENCIAL' && job && !job.is_confidential) return false;
+
+    if (state.filters.sla) {
+      const sla = store.calculateAdmissionSLA(adm);
+      if (sla.code !== state.filters.sla) return false;
+    }
+
+    if (searchLower) {
+      const matchCandName = cand && cand.full_name.toLowerCase().includes(searchLower);
+      const matchCandEmail = cand && cand.email.toLowerCase().includes(searchLower);
+      const matchJobTitle = job && job.title.toLowerCase().includes(searchLower);
+      const matchJobCode = job && job.id.toLowerCase().includes(searchLower);
+      const matchBU = job && job.business_unit && job.business_unit.toLowerCase().includes(searchLower);
+      const matchStage = adm.current_stage && adm.current_stage.toLowerCase().includes(searchLower);
+      const matchResp = adm.responsible_email && adm.responsible_email.toLowerCase().includes(searchLower);
+      if (!matchCandName && !matchCandEmail && !matchJobTitle && !matchJobCode && !matchBU && !matchStage && !matchResp) return false;
+    }
+
     return true;
   });
 
@@ -200,10 +239,50 @@ function refreshUI() {
     });
   };
 
+  const handleAdmissionDelete = (admId) => {
+    const adm = store.getAdmissionById(admId);
+    if (!adm) return;
+    const candName = adm.candidate ? adm.candidate.full_name : 'Candidato';
+
+    openConfirmDeleteModal({
+      title: 'Excluir Processo de Admissão',
+      message: `Tem certeza que deseja remover o processo de admissão de <strong>${candName}</strong>?`,
+      details: 'Esta ação excluirá o processo do Funil de Admissão e seu histórico de etapas. O candidato permanecerá ativo no Banco de Talentos.',
+      onConfirm: async () => {
+        await admissionService.deleteAdmission(admId);
+        showToast(`Processo de admissão de ${candName} excluído!`, 'success');
+        refreshUI();
+      }
+    });
+  };
+
+  const handleAdmissionMove = (admId, targetStage) => {
+    openMoveAdmissionStageModal(admId, targetStage);
+  };
+
+  const handleAdmissionAdvance = async (admId, nextStageName) => {
+    try {
+      await admissionService.moveAdmissionStage(admId, {
+        newStage: nextStageName,
+        feedback: `Avanço direto para a etapa: ${nextStageName}`
+      });
+      showToast(`Processo avançado para "${nextStageName}" com sucesso!`, 'success');
+      refreshUI();
+    } catch (err) {
+      showToast(err.message || 'Erro ao avançar etapa.', 'error');
+    }
+  };
+
   // Bind button in Talent Bank view
   const btnTalentNew = document.getElementById('btn-talent-bank-new');
   if (btnTalentNew) {
     btnTalentNew.onclick = openNewCandidateModal;
+  }
+
+  // Bind button in Admission view
+  const btnAdmissionNewTop = document.getElementById('btn-new-admission-top');
+  if (btnAdmissionNewTop) {
+    btnAdmissionNewTop.onclick = () => openNewAdmissionModal();
   }
 
   // 4. Render Active View
@@ -222,7 +301,8 @@ function refreshUI() {
     openNewCandidateModal,
     () => exportCandidatesToExcel(filteredApps),
     () => exportJobsToExcel(filteredJobs),
-    () => exportAllToExcel(filteredJobs, filteredApps)
+    () => exportAllToExcel(filteredJobs, filteredApps),
+    () => exportAdmissionsToExcel(filteredAdmissions)
   );
 
   renderExecutiveDashboard(
@@ -240,14 +320,66 @@ function refreshUI() {
 
   renderKanbanBoard(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete, openEditCandidateModal);
   renderJobsKanbanBoard(filteredJobs, openMoveJobStatusModal, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete, openEditJobModal);
-  renderCandidatesTable(filteredApps, openMoveStageModal, openAuditDrawer, handleAppDelete, openEditCandidateModal);
-  renderJobsTable(filteredJobs, openAssignRecruiterModal, openJobDetailsModal, handleJobDelete, openEditJobModal);
-  renderTalentBankTable(filteredCandidates, openAttachToJobModal, handleTalentDelete, openEditCandidateModal);
-  renderIndicatorsModule(filteredJobs, filteredApps);
+  renderAdmissionKanbanBoard(filteredAdmissions, handleAdmissionMove, openAdmissionDetailsModal, handleAdmissionDelete, handleAdmissionAdvance);
+  renderTalentBankTable(filteredCandidates, openAttachToJobModal, handleTalentDelete, openEditCandidateModal, openCandidateHistoryModal);
+  renderIndicatorsModule(filteredJobs, filteredApps, filteredAdmissions);
 }
- 
+
+// =============================================================================
+// Plurix Design System v4.5 Controls (Theme, Sync & Sidebar)
+// =============================================================================
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const toggleBtn = document.getElementById('btn-theme-toggle');
+  if (toggleBtn) {
+    if (theme === 'dark') {
+      toggleBtn.innerHTML = `
+        <svg class="theme-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span id="theme-toggle-label">Modo Claro</span>
+      `;
+      toggleBtn.title = 'Alternar para Modo Claro';
+    } else {
+      toggleBtn.innerHTML = `
+        <svg class="theme-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="theme-toggle-label">Modo Escuro</span>
+      `;
+      toggleBtn.title = 'Alternar para Modo Escuro';
+    }
+  }
+}
+
+function initTheme(onThemeChange) {
+  const savedTheme = localStorage.getItem('plx-theme') || 'light';
+  applyTheme(savedTheme);
+
+  const toggleBtn = document.getElementById('btn-theme-toggle');
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+      localStorage.setItem('plx-theme', newTheme);
+      window.dispatchEvent(new Event('resize'));
+      if (onThemeChange) onThemeChange();
+    };
+  }
+}
+
+function initSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  // Menu é permanentemente fixo e não comprimível
+  sidebar.classList.remove('collapsed');
+  localStorage.removeItem('plx-sidebar-collapsed');
+}
+
 // Bootstrapping
 document.addEventListener('DOMContentLoaded', async () => {
+  initTheme(() => refreshUI());
+  initSidebarState();
+
   if (isSupabaseConfigured()) {
     await store.loadFromSupabase();
   }

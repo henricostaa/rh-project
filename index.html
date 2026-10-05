@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
   <!-- Typography & Fonts (Plurix Design System: Inter + Roboto Mono) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/src/styles/main.css" />
 </head>
@@ -18,126 +18,151 @@
     <!-- Container da Tela de Login (Exibida quando deslogado) -->
     <div id="login-screen-container" class="login-screen-container" style="display: none;"></div>
 
-    <!-- Simulated Persona Switcher & RBAC Context Bar -->
-    <section id="rbac-bar" class="rbac-bar">
-      <div class="rbac-container">
-        <span class="rbac-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Simulador de Sessão / Perfil Ativo (RBAC):
-        </span>
-        <div class="rbac-actions">
-          <select id="user-persona-select" class="rbac-select" aria-label="Selecione o Perfil Ativo">
-            <!-- Dynamically populated personas -->
-          </select>
-          <div id="persona-badge" class="persona-badge">
-            <!-- Active role info -->
+    <!-- Header Oficial Ferramentas Plurix (Design System v4.5) -->
+    <header class="plx-global-header" id="plx-hdr">
+      <div class="plx-header-left">
+        <a href="/" class="plx-header-brand" style="text-decoration: none;">
+          <span class="plx-brand-wordmark">Plurix</span>
+          <span class="plx-header-subtitle">Marketplace de Agentes e Aplicações</span>
+        </a>
+        <div class="plx-header-divider"></div>
+        <a href="/" class="plx-nav-link" id="portal-back-link">
+          <span class="plx-link-arrow">←</span> Portal
+        </a>
+      </div>
+
+      <div class="plx-header-right">
+        <div class="plx-user-badge">
+          <div class="plx-user-avatar" id="current-user-avatar">RH</div>
+          <div class="plx-user-meta">
+            <span class="plx-user-name" id="current-user-name">Carregando...</span>
+            <span class="plx-user-role" id="current-user-role">--</span>
           </div>
+          <div class="plx-header-divider" style="height: 20px; margin: 0 4px;"></div>
+          <button id="btn-logout" class="plx-logout-btn" title="Sair da Sessão">Sair</button>
         </div>
       </div>
-    </section>
+    </header>
 
-    <!-- Layout Principal: Sidebar + Área Principal -->
+    <!-- Layout Principal: Sidebar Retrátil + Área de Conteúdo -->
     <div class="app-layout">
       <!-- Overlay para Mobile Sidebar -->
       <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-      <!-- Sidebar Lateral com Módulos de Navegação -->
+      <!-- Sidebar Lateral com Módulos de Navegação (Design System Oficial) -->
       <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-          <div class="brand-logo" style="display: flex; align-items: center; gap: 8px;">
-            <svg version="1.1" viewBox="0 0 1920 1080" class="plurix-logo-dark" style="height: 26px; width: auto; display: block;" aria-label="Plurix Logo">
-              <g fill="#00147E">
-                <path d="M564.2,371.8H626v331.7h-61.9V371.8z"/>
-                <path d="M962.2,456.5v246.5h-61.4v-82c-17,50.2-56.9,87.4-116.1,87.4c-79.8,0-110.7-55.6-110.7-116.1V456.5h61.9v128.2c0,45.3,23.3,69.9,66.8,69.9c56.9,0,98.2-43.5,98.2-134v-64.1L962.2,456.5L962.2,456.5z"/>
-                <path d="M1225.3,459.4c-13.8-4.2-30.5-6.9-47.6-6.9c-56.5,0-92.8,35-109.4,82v-78h-61.9v246.5h61.9v-68.1c0-82,39.4-129.1,104-129.1c22.4,0,40,5.2,52.9,11.3V459.4L1225.3,459.4z"/>
-                <g><path d="M1269.6,456.5h61.9v246.5h-61.9V456.5L1269.6,456.5z"/><circle cx="1300.5" cy="406.3" r="35"/></g>
-                <path d="M1554.4,601.7l24.4-22.5l120.1-123.3h-79.3l-83.8,86.4c-9.1-51.1-53.2-89.9-106.4-89.9c-18.9,0-36.8,3.6-53.3,10.1v60.3c15.7-9,33.9-14.2,53.3-14.2c37.7,0,70.8,19.5,90.2,49l-22.8,21.6l-120.6,123.3h79.8l82.9-86.3c8,52.4,52.8,92.6,106.8,92.6c18.9,0,36.8-3.6,53.3-10.1v-60.3c-15.7,9-33.9,14.2-53.3,14.2C1607.3,652.5,1573.6,632.2,1554.4,601.7L1554.4,601.7L1554.4,601.7z"/>
-                <path d="M389.2,371.4H221.1v331.1h65.3V562.2c30.4,9,65.9,14.2,103.9,14.2c76.7,0.5,126.4-45.8,126.4-105.5S460.9,371.4,389.2,371.4L389.2,371.4z M440,505.1c-12.8,12.8-33.3,19.8-58,19.8h-0.8c-29.4,0-58-3.9-82.7-11.2l-12.1-4.6v-86h93.9c48.3,0,73.6,24.2,73.6,48.2C453.9,484.5,449.2,495.9,440,505.1L440,505.1L440,505.1z"/>
-              </g>
-            </svg>
-            <span class="logo-accent" style="font-size: 13px; font-weight: 700; background: var(--bg-main-default); color: white; padding: 2px 6px; border-radius: 4px;">360°</span>
+        <!-- Topo da Sidebar alinhado à Topbar Principal (height: 86px) -->
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-info">
+            <div class="sidebar-brand-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <div>
+              <span class="sidebar-brand-title">ATS 360°</span>
+              <span class="sidebar-brand-sub">Recrutamento &amp; Seleção</span>
+            </div>
           </div>
-          <div class="brand-subtitle">MVP 1 • Operação e Governança</div>
         </div>
 
-        <div class="sidebar-nav-container">
-          <div class="sidebar-section-title">Módulos de Navegação</div>
-          <nav class="sidebar-nav" role="tablist">
-            <button class="sidebar-nav-item tab-btn active" data-view="dashboard" role="tab" aria-selected="true">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span>Painel Executivo</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="jobs-kanban" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/></svg>
-              <span>Funil de Vagas</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="kanban" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="6" height="14" x="4" y="5" rx="1"/><rect width="6" height="10" x="14" y="5" rx="1"/></svg>
-              <span>Funil do Candidato</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="applications" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              <span>Tabela de Candidaturas</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="jobs" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              <span>Gestão de Vagas</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="talent-bank" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span>Banco de Talentos</span>
-            </button>
-            <button class="sidebar-nav-item tab-btn" data-view="indicators" role="tab" aria-selected="false">
-              <svg class="sidebar-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              <span>Indicadores &amp; Métricas</span>
-            </button>
-          </nav>
-        </div>
+        <div class="nav-section-title">Módulos de Navegação</div>
+        <nav class="sidebar-nav" role="tablist">
+          <button class="nav-item tab-btn active" data-view="dashboard" role="tab" aria-selected="true" title="Painel Executivo">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Painel Executivo</span>
+          </button>
+          <button class="nav-item tab-btn" data-view="jobs-kanban" role="tab" aria-selected="false" title="Funil de Vagas">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/></svg>
+            <span>Funil de Vagas</span>
+          </button>
+          <button class="nav-item tab-btn" data-view="kanban" role="tab" aria-selected="false" title="Funil do Candidato">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="6" height="14" x="4" y="5" rx="1"/><rect width="6" height="10" x="14" y="5" rx="1"/></svg>
+            <span>Funil do Candidato</span>
+          </button>
+          <button class="nav-item tab-btn" data-view="admission-kanban" role="tab" aria-selected="false" title="Funil de Admissão">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6"/><polyline points="19 8 22 11 19 14"/></svg>
+            <span>Funil de Admissão</span>
+          </button>
 
+          <button class="nav-item tab-btn" data-view="talent-bank" role="tab" aria-selected="false" title="Banco de Talentos">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Banco de Talentos</span>
+          </button>
+          <button class="nav-item tab-btn" data-view="indicators" role="tab" aria-selected="false" title="Indicadores &amp; Métricas">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Indicadores &amp; Métricas</span>
+          </button>
+        </nav>
+
+        <!-- Rodapé da Sidebar -->
         <div class="sidebar-footer">
-          <div class="sidebar-user-card" id="sidebar-user-card" style="cursor: pointer;" title="Clique para deslogar">
-            <div class="user-avatar-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <!-- Simulador de Sessão RBAC -->
+          <div class="sidebar-rbac-widget" id="sidebar-rbac-box">
+            <div class="sidebar-rbac-header">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Perfil Ativo (RBAC)</span>
             </div>
-            <div class="sidebar-user-details">
-              <span id="sidebar-user-name" class="user-name">Carregando...</span>
-              <span id="sidebar-user-role" class="user-role-tag">--</span>
-            </div>
+            <select id="user-persona-select" class="sidebar-persona-select" aria-label="Selecione o Perfil Ativo">
+              <!-- Dynamically populated personas -->
+            </select>
+            <div id="persona-badge" class="sidebar-persona-badge">--</div>
+          </div>
+
+
+          <!-- Alternador de Tema Claro / Escuro -->
+          <div class="sidebar-user-controls">
+            <button class="btn-theme-pill" id="btn-theme-toggle" type="button" title="Alternar Modo Claro / Escuro">
+              <svg class="theme-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              <span id="theme-toggle-label">Modo Escuro</span>
+            </button>
           </div>
         </div>
       </aside>
 
       <!-- Área de Conteúdo Principal -->
-      <div class="app-main">
-        <!-- Topbar Autónoma (background var(--navy)) -->
-        <header class="topbar">
-          <div class="topbar-left" style="display: flex; align-items: center; gap: 16px;">
-            <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Menu Lateral" title="Alternar Sidebar">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-            <div class="topbar-brand" style="display: flex; align-items: center; gap: 10px;">
-              <svg version="1.1" viewBox="0 0 1920 1080" class="plurix-logo-light" style="height: 24px; width: auto; display: block;" aria-label="Plurix Logo Header">
-                <g fill="#4FB9EA">
-                  <path d="M564.2,371.8H626v331.7h-61.9V371.8z"/>
-                  <path d="M962.2,456.5v246.5h-61.4v-82c-17,50.2-56.9,87.4-116.1,87.4c-79.8,0-110.7-55.6-110.7-116.1V456.5h61.9v128.2c0,45.3,23.3,69.9,66.8,69.9c56.9,0,98.2-43.5,98.2-134v-64.1L962.2,456.5L962.2,456.5z"/>
-                  <path d="M1225.3,459.4c-13.8-4.2-30.5-6.9-47.6-6.9c-56.5,0-92.8,35-109.4,82v-78h-61.9v246.5h61.9v-68.1c0-82,39.4-129.1,104-129.1c22.4,0,40,5.2,52.9,11.3V459.4L1225.3,459.4z"/>
-                  <g><path d="M1269.6,456.5h61.9v246.5h-61.9V456.5L1269.6,456.5z"/><circle cx="1300.5" cy="406.3" r="35"/></g>
-                  <path d="M1554.4,601.7l24.4-22.5l120.1-123.3h-79.3l-83.8,86.4c-9.1-51.1-53.2-89.9-106.4-89.9c-18.9,0-36.8,3.6-53.3,10.1v60.3c15.7-9,33.9-14.2,53.3-14.2c37.7,0,70.8,19.5,90.2,49l-22.8,21.6l-120.6,123.3h79.8l82.9-86.3c8,52.4,52.8,92.6,106.8,92.6c18.9,0,36.8-3.6,53.3-10.1v-60.3c-15.7,9-33.9,14.2-53.3,14.2C1607.3,652.5,1573.6,632.2,1554.4,601.7L1554.4,601.7L1554.4,601.7z"/>
-                  <path d="M389.2,371.4H221.1v331.1h65.3V562.2c30.4,9,65.9,14.2,103.9,14.2c76.7,0.5,126.4-45.8,126.4-105.5S460.9,371.4,389.2,371.4L389.2,371.4z M440,505.1c-12.8,12.8-33.3,19.8-58,19.8h-0.8c-29.4,0-58-3.9-82.7-11.2l-12.1-4.6v-86h93.9c48.3,0,73.6,24.2,73.6,48.2C453.9,484.5,449.2,495.9,440,505.1L440,505.1L440,505.1z"/>
-                </g>
-              </svg>
-              <span style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85);" id="active-module-title">Painel Executivo</span>
-            </div>
+      <div class="main-content-wrap">
+        <!-- Topbar do Módulo Principal (Alinhado à Sidebar, height: 86px) -->
+        <header class="main-topbar">
+          <div>
+            <span class="plx-category-pill">RECRUTAMENTO &amp; SELEÇÃO</span>
+            <h1 class="main-page-title" id="active-module-title">Painel Executivo</h1>
+            <p class="main-page-subtitle" id="active-module-subtitle">Acompanhamento estratégico de vagas, pipeline de candidatos, SLAs e governança de R&amp;S.</p>
           </div>
 
-          <div class="topbar-nav">
-            <div class="topbar-user-info">
-              <span id="current-user-name" class="user-name">Carregando...</span>
-              <span id="current-user-role" class="user-role-tag">--</span>
+          <div class="main-topbar-actions">
+            <!-- Dropdown Exportar Excel -->
+            <div class="export-dropdown-wrapper" style="position: relative;">
+              <button id="btn-export-menu" class="btn btn-excel" aria-expanded="false" title="Exportar dados para Excel (.xlsx)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2a2 2 0 1 0 0-4H8v8"/><path d="M16 13h-2v4h2"/></svg>
+                <span>Exportar Excel</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="export-dropdown-menu" class="dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); box-shadow: var(--shadow-elevated); z-index: 100; min-width: 220px;">
+                <button id="btn-export-candidates" class="dropdown-item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  Exportar Candidatos (.xlsx)
+                </button>
+                <button id="btn-export-jobs" class="dropdown-item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  Exportar Vagas (.xlsx)
+                </button>
+                <button id="btn-export-admissions" class="dropdown-item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                  Exportar Admissões (.xlsx)
+                </button>
+                <button id="btn-export-all" class="dropdown-item" style="border-top: 1px solid var(--border-subtle); color: var(--plx-primary); font-weight: 700;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                  Relatório Completo (Todos)
+                </button>
+              </div>
             </div>
-            <button id="btn-logout" class="btn btn-outline-light btn-sm" title="Sair da Sessão">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Sair
+
+            <button id="btn-new-candidate" class="btn btn-secondary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              <span>Novo Candidato</span>
+            </button>
+            <button id="btn-new-job" class="btn btn-primary" title="Submeter abertura de vaga (BPs e Gestora RH)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Nova Vaga</span>
             </button>
           </div>
         </header>
@@ -183,40 +208,7 @@
             </div>
 
             <div class="toolbar-bottom">
-              <!-- Quick Action Buttons -->
-              <div class="action-buttons">
-                <!-- Dropdown Exportar Excel -->
-                <div class="export-dropdown-wrapper" style="position: relative;">
-                  <button id="btn-export-menu" class="btn btn-excel" aria-expanded="false" title="Exportar dados para Excel (.xlsx)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2a2 2 0 1 0 0-4H8v8"/><path d="M16 13h-2v4h2"/></svg>
-                    Exportar Excel
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-                  </button>
-                  <div id="export-dropdown-menu" class="dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #ffffff; border: 1px solid var(--brd); border-radius: var(--rs); box-shadow: var(--shadow-lg); z-index: 100; min-width: 230px;">
-                    <button id="btn-export-candidates" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                      Exportar Candidatos (.xlsx)
-                    </button>
-                    <button id="btn-export-jobs" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--brd2);">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#107c41" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                      Exportar Vagas (.xlsx)
-                    </button>
-                    <button id="btn-export-all" class="dropdown-item" style="width: 100%; text-align: left; padding: 10px 14px; background: transparent; border: none; font-size: 0.82rem; font-weight: 600; color: var(--navy); cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--brd2);">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-                      Relatório Completo (Ambos)
-                    </button>
-                  </div>
-                </div>
-
-                <button id="btn-new-candidate" class="btn btn-secondary">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                  Novo Candidato
-                </button>
-                <button id="btn-new-job" class="btn btn-primary" title="Submeter abertura de vaga (BPs e Gestora RH)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Nova Vaga
-                </button>
-              </div>
+              <!-- Quick Action Buttons are now located in main-topbar -->
             </div>
           </section>
 
@@ -241,70 +233,28 @@
               </div>
             </div>
 
-            <!-- View 2: Applications Table -->
-            <div id="view-applications" class="view-panel">
-              <div class="table-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; background: #ffffff; padding: 10px 16px; border: 1px solid var(--brd); border-radius: var(--rs);">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--navy);">📋 Tabela Operacional de Candidaturas</div>
-                <button id="btn-export-candidates-table" class="btn btn-excel btn-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2a2 2 0 1 0 0-4H8v8"/><path d="M16 13h-2v4h2"/></svg>
-                  Exportar Candidatos Excel
-                </button>
+            <!-- View 3: Funil de Admissão & Onboarding -->
+            <div id="view-admission-kanban" class="view-panel">
+              <div class="table-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; background: #ffffff; padding: 12px 18px; border: 1px solid var(--brd); border-radius: var(--rs); box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--navy); display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6"/><polyline points="19 8 22 11 19 14"/></svg>
+                    Funil de Admissão &amp; Onboarding
+                  </div>
+                  <span class="badge badge-neutral" id="admission-counter-badge" style="font-size: 0.78rem;">0 em andamento</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <button id="btn-new-admission-top" class="btn btn-primary btn-sm">
+                    + Iniciar Nova Admissão
+                  </button>
+                </div>
               </div>
-              <div class="tbl-wrap">
-                <table class="data-table" id="applications-table">
-                  <thead>
-                    <tr>
-                      <th>Candidato</th>
-                      <th>Contato / Canal</th>
-                      <th>Vaga / Diretoria</th>
-                      <th>Recrutadora</th>
-                      <th>Etapa Atual</th>
-                      <th>Tempo na Etapa</th>
-                      <th>SLA</th>
-                      <th>Status</th>
-                      <th class="text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="applications-table-body">
-                    <!-- Rendered dynamically -->
-                  </tbody>
-                </table>
+              <div class="kanban-wrapper" id="admission-kanban-board">
+                <!-- Rendered dynamically -->
               </div>
             </div>
 
-            <!-- View 3: Jobs Table -->
-            <div id="view-jobs" class="view-panel">
-              <div class="table-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; background: #ffffff; padding: 10px 16px; border: 1px solid var(--brd); border-radius: var(--rs);">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--navy);">💼 Tabela Operacional de Vagas</div>
-                <button id="btn-export-jobs-table" class="btn btn-excel btn-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-                  Exportar Vagas Excel
-                </button>
-              </div>
-              <div class="tbl-wrap">
-                <table class="data-table" id="jobs-table">
-                  <thead>
-                    <tr>
-                      <th>Código</th>
-                      <th>Título da Vaga</th>
-                      <th>Negócio / Diretoria</th>
-                      <th>BP Responsável</th>
-                      <th>Recrutadora Atribuída</th>
-                      <th>Faixa Salarial</th>
-                      <th>Modelo</th>
-                      <th>Posições</th>
-                      <th>SLA Limite</th>
-                      <th>Candidatos</th>
-                      <th>Status Vaga</th>
-                      <th class="text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="jobs-table-body">
-                    <!-- Rendered dynamically -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
 
             <!-- View 4: Banco de Talentos -->
             <div id="view-talent-bank" class="view-panel">
@@ -439,9 +389,38 @@
                 <input type="text" id="job-hiring-manager" placeholder="Nome do gestor da vaga" />
               </div>
 
-              <div class="form-group">
-                <label for="job-sla-days" class="required">SLA Limite por Etapa (dias)</label>
-                <input type="number" id="job-sla-days" value="4" min="1" max="30" required />
+              <div class="form-group span-2 sla-config-section">
+                <div class="sla-section-header">
+                  <div class="sla-section-title-wrap">
+                    <div class="sla-section-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div>
+                      <h4 class="sla-section-heading">SLAs por Etapa do Processo (Fluxo Oficial R&amp;S)</h4>
+                      <p class="sla-section-sub">Prazos pré-configurados com base nas diretrizes oficiais. Digite manualmente para personalizar o SLA de qualquer etapa nesta vaga.</p>
+                    </div>
+                  </div>
+                  <div class="sla-section-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-new-job-slas" title="Restaurar prazos padrões do fluxo">
+                      ↺ Restaurar Padrões
+                    </button>
+                  </div>
+                </div>
+
+                <div class="sla-stages-grid" id="new-job-sla-stages-grid">
+                  <!-- Rendered dynamically via Modals.js -->
+                </div>
+
+                <div class="sla-total-bar">
+                  <div class="sla-total-info">
+                    <span>Tempo Total Estimado do Processo (SLA Total):</span>
+                    <strong id="new-job-total-sla-display" class="sla-total-number">20 dias</strong>
+                  </div>
+                  <div class="sla-flow-pills" id="new-job-sla-pills">
+                    <!-- Pills com prazos de cada etapa -->
+                  </div>
+                </div>
+                <input type="hidden" id="job-sla-days" value="4" />
               </div>
 
               <div class="form-group">
@@ -560,6 +539,16 @@
               </div>
 
               <div class="form-group span-2">
+                <label for="cand-gender" class="required">Sexo / Gênero</label>
+                <select id="cand-gender" required>
+                  <option value="Feminino">Feminino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Outro">Outro</option>
+                  <option value="Prefiro não informar">Prefiro não informar</option>
+                </select>
+              </div>
+
+              <div class="form-group span-2">
                 <label for="cand-linkedin">LinkedIn</label>
                 <input type="url" id="cand-linkedin" placeholder="https://www.linkedin.com/in/exemplo" />
               </div>
@@ -569,18 +558,7 @@
                 <textarea id="cand-comment" rows="4" placeholder=""></textarea>
               </div>
 
-              <div class="form-group span-2">
-                <label for="cand-resume-file">Currículo</label>
-                <div class="file-upload-wrapper">
-                  <input type="file" id="cand-resume-file" accept=".pdf,.doc,.docx" style="display: none;" />
-                  <button type="button" id="btn-trigger-cand-resume" class="btn-file-attach">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Anexar arquivo
-                  </button>
-                  <span id="cand-resume-name" class="file-attached-name"></span>
-                  <button type="button" id="btn-remove-cand-resume" class="btn-remove-file" style="display: none;" title="Remover arquivo">&times;</button>
-                </div>
-              </div>
+
             </div>
           </div>
           <div class="modal-footer">
@@ -865,6 +843,16 @@
                 </select>
               </div>
 
+              <div class="form-group">
+                <label for="edit-cand-gender" class="required">Sexo / Gênero</label>
+                <select id="edit-cand-gender" required>
+                  <option value="Feminino">Feminino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Outro">Outro</option>
+                  <option value="Prefiro não informar">Prefiro não informar</option>
+                </select>
+              </div>
+
               <div class="form-group span-2">
                 <label for="edit-cand-linkedin">LinkedIn</label>
                 <input type="url" id="edit-cand-linkedin" placeholder="https://www.linkedin.com/in/exemplo" />
@@ -875,18 +863,7 @@
                 <textarea id="edit-cand-comment" rows="4" placeholder=""></textarea>
               </div>
 
-              <div class="form-group span-2">
-                <label for="edit-cand-resume-file">Currículo</label>
-                <div class="file-upload-wrapper">
-                  <input type="file" id="edit-cand-resume-file" accept=".pdf,.doc,.docx" style="display: none;" />
-                  <button type="button" id="btn-trigger-edit-cand-resume" class="btn-file-attach">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Anexar arquivo
-                  </button>
-                  <span id="edit-cand-resume-name" class="file-attached-name"></span>
-                  <button type="button" id="btn-remove-edit-cand-resume" class="btn-remove-file" style="display: none;" title="Remover arquivo">&times;</button>
-                </div>
-              </div>
+
             </div>
           </div>
           <div class="modal-footer">
@@ -948,9 +925,38 @@
                 <input type="number" id="edit-job-positions-count" min="1" max="100" required />
               </div>
 
-              <div class="form-group">
-                <label for="edit-job-sla-days" class="required">SLA Limite por Etapa (dias)</label>
-                <input type="number" id="edit-job-sla-days" min="1" max="30" required />
+              <div class="form-group span-2 sla-config-section">
+                <div class="sla-section-header">
+                  <div class="sla-section-title-wrap">
+                    <div class="sla-section-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div>
+                      <h4 class="sla-section-heading">SLAs por Etapa do Processo (Fluxo Oficial R&amp;S)</h4>
+                      <p class="sla-section-sub">Prazos pré-configurados com base nas diretrizes oficiais. Digite manualmente para personalizar o SLA de qualquer etapa nesta vaga.</p>
+                    </div>
+                  </div>
+                  <div class="sla-section-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-edit-job-slas" title="Restaurar prazos padrões do fluxo">
+                      ↺ Restaurar Padrões
+                    </button>
+                  </div>
+                </div>
+
+                <div class="sla-stages-grid" id="edit-job-sla-stages-grid">
+                  <!-- Rendered dynamically via Modals.js -->
+                </div>
+
+                <div class="sla-total-bar">
+                  <div class="sla-total-info">
+                    <span>Tempo Total Estimado do Processo (SLA Total):</span>
+                    <strong id="edit-job-total-sla-display" class="sla-total-number">20 dias</strong>
+                  </div>
+                  <div class="sla-flow-pills" id="edit-job-sla-pills">
+                    <!-- Pills com prazos de cada etapa -->
+                  </div>
+                </div>
+                <input type="hidden" id="edit-job-sla-days" value="4" />
               </div>
 
               <div class="form-group">
@@ -1022,6 +1028,485 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
             <button type="submit" class="btn btn-primary">Salvar Alterações da Vaga</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 11: Mover Candidato para Outra Vaga -->
+    <div id="modal-transfer-candidate" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Mover Candidato para Outra Vaga</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-transfer-candidate">
+          <input type="hidden" id="transfer-application-id" />
+          <div class="modal-body">
+            <div class="candidate-preview-box" id="transfer-candidate-preview" style="margin-bottom: 14px;">
+              <!-- Dynamic candidate and current job preview -->
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="transfer-target-job-id" class="required">Selecione a Nova Vaga de Destino</label>
+              <select id="transfer-target-job-id" required>
+                <!-- Populated dynamically -->
+              </select>
+              <small class="form-help">A candidatura será transferida para a nova vaga selecionada com etapa inicial e SLA zerado.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="transfer-reason">Justificativa / Motivo da Transferência</label>
+              <textarea id="transfer-reason" rows="3" placeholder="Insira a justificativa para transferência do candidato para outra vaga..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Confirmar Transferência de Vaga</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 12: Histórico do Candidato (Banco de Talentos) -->
+    <div id="modal-candidate-history" class="modal">
+      <div class="modal-dialog" style="max-width: 700px;">
+        <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h3 class="modal-title" id="cand-history-modal-title">Histórico de Candidaturas e Transições</h3>
+            <div style="font-size: 0.78rem; opacity: 0.85; font-weight: 400; margin-top: 2px;" id="cand-history-modal-subtitle">Visão Consolidada no Banco de Talentos</div>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="cand-history-profile-summary" class="candidate-preview-box" style="margin-bottom: 16px;">
+            <!-- Candidate profile info -->
+          </div>
+
+          <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--navy); margin-bottom: 8px;">
+            Vagas Inscritas / Histórico de Candidaturas
+          </h4>
+          <div id="cand-history-jobs-list" style="margin-bottom: 16px;">
+            <!-- List of applications -->
+          </div>
+
+          <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--navy); margin-bottom: 8px;">
+            Trilha Temporal de Auditoria e Movimentações
+          </h4>
+          <div class="timeline" id="cand-history-timeline">
+            <!-- Timeline items -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 13: Iniciar Nova Admissão -->
+    <div id="modal-admission-new" class="modal">
+      <div class="modal-dialog" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 class="modal-title">Iniciar Processo de Admissão</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-admission-new">
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label for="admission-new-candidate" class="required">Candidato Aprovado</label>
+                <select id="admission-new-candidate" required>
+                  <option value="">Selecione o Candidato...</option>
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="admission-new-job" class="required">Vaga Vinculada</label>
+                <select id="admission-new-job" required>
+                  <option value="">Selecione a Vaga...</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="admission-new-start-date">Data Prevista de Início</label>
+                <input type="date" id="admission-new-start-date" />
+              </div>
+
+              <div class="form-group">
+                <label for="admission-new-salary">Salário Acordado (R$)</label>
+                <input type="number" id="admission-new-salary" step="100" min="0" placeholder="Ex: 8500" />
+              </div>
+
+              <div class="form-group span-2">
+                <label for="admission-new-responsible">Responsável pelo Acompanhamento</label>
+                <select id="admission-new-responsible">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="admission-new-notes">Observações Iniciais</label>
+                <textarea id="admission-new-notes" rows="3" placeholder="Informações contratuais, regime de contratação (CLT/PJ), particularidades do onboarding..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Iniciar Processo no Funil</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 14: Detalhes e Checklist Completo do Funil de Admissão -->
+    <div id="modal-admission-details" class="modal">
+      <div class="modal-dialog" style="max-width: 880px;">
+        <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h3 class="modal-title" id="admission-details-candidate-name">Checklist de Admissão</h3>
+            <div style="font-size: 0.78rem; opacity: 0.85; font-weight: 400; margin-top: 2px;" id="admission-details-job-title">--</div>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+          <input type="hidden" id="admission-details-id" />
+
+          <!-- Resumo e Barra de Progresso Geral -->
+          <div class="admission-details-hero" style="background: var(--surface-subtle); border: 1px solid var(--brd); border-radius: var(--rs); padding: 14px 18px; margin-bottom: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+              <div>
+                <span style="font-size: 0.74rem; color: var(--muted); text-transform: uppercase; font-weight: 700;">Etapa Atual</span>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                  <span id="admission-details-stage-badge" class="badge badge-neutral" style="font-size: 0.82rem; padding: 4px 10px; font-weight: 700;">--</span>
+                  <span id="admission-details-sla-badge" class="badge badge-a">--</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="text-align: right;">
+                  <span style="font-size: 0.74rem; color: var(--muted); text-transform: uppercase; font-weight: 700;">Data Prevista</span>
+                  <div id="admission-details-start-date" style="font-weight: 700; color: var(--navy); font-size: 0.9rem;">--</div>
+                </div>
+                <div style="text-align: right;">
+                  <span style="font-size: 0.74rem; color: var(--muted); text-transform: uppercase; font-weight: 700;">Remuneração</span>
+                  <div id="admission-details-salary" style="font-weight: 700; color: #15803d; font-size: 0.9rem;">--</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progresso Geral -->
+            <div style="margin-top: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--muted); font-weight: 600; margin-bottom: 4px;">
+                <span>Progresso do Processo Admissional (8 Etapas Oficiais)</span>
+                <span id="admission-details-progress-text" style="color: var(--navy); font-weight: 700;">0/8</span>
+              </div>
+              <div style="height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                <div id="admission-details-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00147d, #50baec); border-radius: 999px; transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- As 8 Etapas Oficiais do Funil de Admissão -->
+          <div class="admission-checklist-grid" style="display: flex; flex-direction: column; gap: 12px;">
+            
+            <!-- Etapa 1: Carta Oferta -->
+            <div class="admission-step-card" data-step="1">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">1</span>
+                  <span>Carta Oferta (Assinatura Gestor e Candidato)</span>
+                </div>
+                <span class="badge" id="step1-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div class="checklist-items-row">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-oferta-gestor" />
+                    <span>Assinatura do Gestor Coletada</span>
+                  </label>
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-oferta-candidato" />
+                    <span>Assinatura do Candidato Coletada</span>
+                  </label>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.78rem; color: var(--muted);">
+                  Formalização da proposta salarial, benefícios e cargo com aceite formal de ambas as partes.
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 2: Envio do Link de Admissão -->
+            <div class="admission-step-card" data-step="2">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">2</span>
+                  <span>Envio do Link de Admissão</span>
+                </div>
+                <span class="badge" id="step2-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div class="checklist-items-row">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-link-enviado" />
+                    <span>Link do Portal de Admissão Enviado ao Candidato</span>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.78rem; color: var(--muted); font-weight: 600;">Status Documentos:</span>
+                    <select id="sel-link-status" class="form-select-sm">
+                      <option value="Pendente">Pendente</option>
+                      <option value="Em Preenchimento">Em Preenchimento</option>
+                      <option value="Documentos Enviados">Documentos Enviados</option>
+                      <option value="Aprovado">Aprovado pelo DP</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 3: Abertura Chamado Exame Admissão -->
+            <div class="admission-step-card" data-step="3">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">3</span>
+                  <span>Abertura Chamado Exame Admissão</span>
+                </div>
+                <span class="badge" id="step3-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Protocolo / Chamado</label>
+                    <input type="text" id="input-exame-protocolo" class="form-input-sm" placeholder="Ex: MED-8841" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Clínica Médica</label>
+                    <input type="text" id="input-exame-clinica" class="form-input-sm" placeholder="Ex: Clínica Saúde Curitiba" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Data do Exame</label>
+                    <input type="date" id="input-exame-data" class="form-input-sm" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Resultado ASO</label>
+                    <select id="sel-exame-aso" class="form-select-sm" style="width: 100%;">
+                      <option value="Pendente">Pendente</option>
+                      <option value="Agendado">Agendado</option>
+                      <option value="Apto">Apto</option>
+                      <option value="Inapto">Inapto</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 4: Carta de Banco (Opcional) -->
+            <div class="admission-step-card" data-step="4">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">4</span>
+                  <span>Carta de Banco <span style="font-size: 0.75rem; font-weight: 600; color: var(--muted);">(Opcional)</span></span>
+                </div>
+                <span class="badge" id="step4-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div class="checklist-items-row">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-banco-dispensada" />
+                    <span><b>Dispensada</b> (Candidato já possui conta ativa no banco conveniado)</span>
+                  </label>
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-banco-emitida" />
+                    <span>Carta Emitida e Entregue ao Candidato</span>
+                  </label>
+                </div>
+                <div style="margin-top: 8px;">
+                  <input type="text" id="input-banco-nome" class="form-input-sm" placeholder="Banco / Agência (ex: Santander / Ag 1234)" style="max-width: 320px;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 5: Chamado de Admissão -->
+            <div class="admission-step-card" data-step="5">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">5</span>
+                  <span>Chamado de Admissão (Departamento Pessoal)</span>
+                </div>
+                <span class="badge" id="step5-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Nº Chamado DP</label>
+                    <input type="text" id="input-dp-numero" class="form-input-sm" placeholder="Ex: DP-2026-551" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Responsável DP</label>
+                    <input type="text" id="input-dp-responsavel" class="form-input-sm" placeholder="Ex: Mariana DP" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status DP</label>
+                    <select id="sel-dp-status" class="form-select-sm" style="width: 100%;">
+                      <option value="Pendente">Pendente</option>
+                      <option value="Aberto">Aberto</option>
+                      <option value="Concluído">Concluído</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 6: E-mail de Confirmação -->
+            <div class="admission-step-card" data-step="6">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">6</span>
+                  <span>E-mail de Confirmação</span>
+                </div>
+                <span class="badge" id="step6-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div class="checklist-items-row">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-email-confirmacao" />
+                    <span>E-mail de Boas-Vindas e Orientações do 1º Dia Enviado</span>
+                  </label>
+                </div>
+                <div style="margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
+                  Instruções de horário, local de apresentação ou link da integração virtual e boas-vindas oficiais.
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 7: Formulário de Acessos GLPI -->
+            <div class="admission-step-card" data-step="7">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">7</span>
+                  <span>Formulário de Acessos GLPI (TI &amp; Infraestrutura)</span>
+                </div>
+                <span class="badge" id="step7-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Nº Ticket GLPI</label>
+                    <input type="text" id="input-glpi-ticket" class="form-input-sm" placeholder="Ex: GLPI-84910" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status GLPI</label>
+                    <select id="sel-glpi-status" class="form-select-sm" style="width: 100%;">
+                      <option value="Pendente">Pendente</option>
+                      <option value="Aberto">Aberto</option>
+                      <option value="Em Atendimento">Em Atendimento</option>
+                      <option value="Concluído">Concluído</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="checklist-items-row">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-glpi-notebook" />
+                    <span>Notebook / Equipamento</span>
+                  </label>
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-glpi-email" />
+                    <span>E-mail Corporativo (@plurix.com.br)</span>
+                  </label>
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-glpi-vpn" />
+                    <span>VPN / Acessos de Rede</span>
+                  </label>
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="chk-glpi-cracha" />
+                    <span>Crachá / Acesso Predial</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Etapa 8: Inserir Dados Planilha Admissão -->
+            <div class="admission-step-card" data-step="8">
+              <div class="step-card-header">
+                <div class="step-card-title">
+                  <span class="step-number">8</span>
+                  <span>Inserir Dados Planilha Admissão</span>
+                </div>
+                <span class="badge" id="step8-status-badge">Pendente</span>
+              </div>
+              <div class="step-card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <label class="checkbox-inline">
+                      <input type="checkbox" id="chk-planilha-inserida" />
+                      <span>Inserido na Planilha Mestre de Admissão</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Nº da Matrícula Gerada</label>
+                    <input type="text" id="input-matricula-gerada" class="form-input-sm" placeholder="Ex: PLX-0994" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Observações Gerais do Processo -->
+          <div style="margin-top: 18px;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--navy); display: block; margin-bottom: 4px;">Observações e Anotações Internas</label>
+            <textarea id="admission-details-notes" rows="2" style="width: 100%; border: 1px solid var(--brd); border-radius: var(--rs); padding: 8px 12px; font-size: 0.85rem;" placeholder="Observações de alinhamento com gestor, DP, TI ou candidato..."></textarea>
+          </div>
+
+          <!-- Trilha de Auditoria -->
+          <div style="margin-top: 20px;">
+            <h4 style="font-size: 0.86rem; font-weight: 700; color: var(--navy); margin-bottom: 8px;">Trilha de Auditoria e Movimentações</h4>
+            <div class="timeline" id="admission-details-timeline" style="max-height: 200px; overflow-y: auto;">
+              <!-- Dynamic timeline -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary" data-close-modal>Fechar</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" id="btn-admission-save-checklist" class="btn btn-secondary">
+              Salvar Checklist
+            </button>
+            <button type="button" id="btn-admission-details-advance" class="btn btn-primary">
+              Avançar Próxima Etapa &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 15: Mover Etapa de Admissão -->
+    <div id="modal-admission-move" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Movimentar Etapa de Admissão</h3>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="form-admission-move">
+          <input type="hidden" id="admission-move-id" />
+          <div class="modal-body">
+            <div class="candidate-preview-box" id="admission-move-preview" style="margin-bottom: 14px;">
+              <!-- Dynamic candidate and admission preview -->
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="admission-move-target-stage" class="required">Nova Etapa de Admissão</label>
+              <select id="admission-move-target-stage" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="admission-move-feedback" class="required">Parecer / Observação da Movimentação</label>
+              <textarea id="admission-move-feedback" rows="3" required placeholder="Descreva os avanços realizados ou justificativa da movimentação..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn-primary">Confirmar Movimentação</button>
           </div>
         </form>
       </div>

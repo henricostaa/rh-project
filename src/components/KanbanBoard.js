@@ -1,11 +1,7 @@
-// =============================================================================
-// ATS PLURIX 360° | Componente Funil do Candidato (Kanban Board 9 Etapas)
-// =============================================================================
-
 import { TAXONOMY } from '../db/schema.js';
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
-import { showToast } from './Modals.js';
+import { showToast, downloadResume, openTransferCandidateJobModal, openNewAdmissionModal, openAdmissionDetailsModal } from './Modals.js';
 
 let draggedAppId = null;
 let draggedFromStage = null;
@@ -70,8 +66,14 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onD
 
                 <div class="card-badges-row">
                   <span class="badge badge-neutral">${app.status}</span>
+                  ${cand && cand.gender ? `<span class="badge badge-neutral">${cand.gender}</span>` : ''}
                   ${job && job.is_confidential ? '<span class="badge badge-confidential">Confidencial</span>' : ''}
                   ${cand && cand.source ? `<span class="badge badge-neutral">${cand.source}</span>` : ''}
+                  ${cand && (cand.resume_url || cand.resume_name) ? `
+                    <span class="badge badge-neutral btn-download-resume-kanban" data-cand-id="${cand.id}" style="cursor: pointer; color: var(--navy); display: inline-flex; align-items: center; gap: 3px;" title="Visualizar/Baixar Currículo">
+                      📎 ${cand.resume_name || 'Currículo'}
+                    </span>
+                  ` : ''}
                 </div>
 
                 <div class="card-meta">
@@ -83,6 +85,16 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onD
                     <button class="btn btn-secondary btn-sm btn-edit-cand-kanban" data-cand-id="${cand ? cand.id : ''}" data-cand-email="${cand ? cand.email : ''}" title="Editar Informações do Candidato">
                       Editar
                     </button>
+                    ${(stage === 'Oferta' || stage === 'Contratado' || app.status === 'Aprovado R&S') ? `
+                      <button class="btn btn-primary btn-sm btn-start-admission-card" data-cand-id="${cand ? cand.id : ''}" data-job-id="${job ? job.id : ''}" title="Iniciar ou Ver Processo de Admissão">
+                        📋 Admissão
+                      </button>
+                    ` : ''}
+                    ${canMove ? `
+                      <button class="btn btn-secondary btn-sm btn-transfer-kanban" data-app-id="${app.id}" title="Mover Candidato para Outra Vaga">
+                        Mover
+                      </button>
+                    ` : ''}
                     ${canDelete ? `
                       <button class="btn btn-danger-outline btn-sm btn-delete-app-card" data-app-id="${app.id}" title="Excluir Candidatura">
                         Excluir
@@ -106,12 +118,41 @@ export function renderKanbanBoard(applications, onMoveClick, onHistoryClick, onD
     };
   });
 
+  container.querySelectorAll('.btn-start-admission-card').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const candId = btn.dataset.candId;
+      const jobId = btn.dataset.jobId;
+      const existing = store.getAdmissions().find(a => a.candidate_id === candId && a.job_id === jobId);
+      if (existing) {
+        openAdmissionDetailsModal(existing.id);
+      } else {
+        openNewAdmissionModal(candId, jobId);
+      }
+    };
+  });
+
+  container.querySelectorAll('.btn-download-resume-kanban').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const cand = store.getCandidates().find(c => c.id === btn.dataset.candId);
+      if (cand) downloadResume(cand.resume_url, cand.resume_name);
+    };
+  });
+
   container.querySelectorAll('.btn-edit-cand-kanban').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
       if (onEditCandidateClick) {
         onEditCandidateClick(btn.dataset.candId || btn.dataset.candEmail);
       }
+    };
+  });
+
+  container.querySelectorAll('.btn-transfer-kanban').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openTransferCandidateJobModal(btn.dataset.appId);
     };
   });
 

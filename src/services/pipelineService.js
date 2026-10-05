@@ -59,6 +59,10 @@ class PipelineService {
 
     return store.getStageHistoryByApplication(applicationId);
   }
+
+  getCandidateHistory(candidateIdOrEmail) {
+    return store.getCandidateHistory(candidateIdOrEmail);
+  }
 }
 
 export const pipelineService = new PipelineService();

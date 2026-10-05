@@ -157,8 +157,10 @@ class JobService {
       salary_min: (jobData.salary_min !== undefined && jobData.salary_min !== '' && jobData.salary_min !== null) ? Number(jobData.salary_min) : null,
       salary_max: (jobData.salary_max !== undefined && jobData.salary_max !== '' && jobData.salary_max !== null) ? Number(jobData.salary_max) : null,
       stage_sla_days: Number(jobData.stage_sla_days) || 4,
+      stage_slas: jobData.stage_slas || null,
       recruiter_email: jobData.recruiter_email || null,
       observation: jobData.observation || '',
+      description: jobData.description || '',
       is_pcd: !!jobData.is_pcd,
       is_confidential: !!jobData.is_confidential
     };

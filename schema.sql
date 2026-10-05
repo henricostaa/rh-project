@@ -34,6 +34,7 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_model TEXT DEFAULT 'Presencial';
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS positions_count INTEGER DEFAULT 1;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS stage_slas JSONB;
 
 -- 2. Tabela de Candidatos
 CREATE TABLE IF NOT EXISTS candidates (
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS candidates (
   source TEXT NOT NULL,
   linkedin TEXT,
   comment TEXT,
+  gender TEXT DEFAULT 'Não informado',
   resume_url TEXT,
   resume_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -51,6 +53,7 @@ CREATE TABLE IF NOT EXISTS candidates (
 
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS linkedin TEXT;
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'Não informado';
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_url TEXT;
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_name TEXT;
 
@@ -100,12 +103,57 @@ CREATE INDEX IF NOT EXISTS idx_applications_candidate ON applications(candidate_
 CREATE INDEX IF NOT EXISTS idx_stage_history_app ON stage_history(application_id);
 CREATE INDEX IF NOT EXISTS idx_job_history_job ON job_history(job_id);
 
+-- 6. Tabela de Processos de Admissão
+CREATE TABLE IF NOT EXISTS admissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  application_id UUID REFERENCES applications(id) ON DELETE SET NULL,
+  current_stage TEXT NOT NULL DEFAULT 'Carta Oferta (Assinatura Gestor e Candidato)',
+  status TEXT NOT NULL DEFAULT 'EM_ANDAMENTO',
+  start_date DATE,
+  salary NUMERIC(10, 2),
+  responsible_email TEXT,
+  checklist JSONB DEFAULT '{}'::jsonb,
+  notes TEXT,
+  stage_entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- 7. Histórico de Etapas de Admissão (Auditoria INSERT-Only)
+CREATE TABLE IF NOT EXISTS admission_stage_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admission_id UUID NOT NULL REFERENCES admissions(id) ON DELETE CASCADE,
+  previous_stage TEXT NOT NULL,
+  new_stage TEXT NOT NULL,
+  status_at_move TEXT NOT NULL,
+  feedback TEXT,
+  moved_by TEXT NOT NULL,
+  duration_days INTEGER NOT NULL DEFAULT 0,
+  moved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índices recomendados para performance de pesquisa e auditoria
+CREATE INDEX IF NOT EXISTS idx_jobs_department ON jobs(department);
+CREATE INDEX IF NOT EXISTS idx_jobs_recruiter ON jobs(recruiter_email);
+CREATE INDEX IF NOT EXISTS idx_candidates_email ON candidates(email);
+CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
+CREATE INDEX IF NOT EXISTS idx_applications_candidate ON applications(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_stage_history_app ON stage_history(application_id);
+CREATE INDEX IF NOT EXISTS idx_job_history_job ON job_history(job_id);
+CREATE INDEX IF NOT EXISTS idx_admissions_candidate ON admissions(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_admissions_job ON admissions(job_id);
+CREATE INDEX IF NOT EXISTS idx_admission_history ON admission_stage_history(admission_id);
+
 -- Politicas de Segurança Row Level Security (RLS) para o Supabase
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stage_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admission_stage_history ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
 BEGIN
@@ -124,5 +172,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a job_history') THEN
     CREATE POLICY "Acesso total a job_history" ON job_history FOR ALL USING (true) WITH CHECK (true);
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a admissions') THEN
+    CREATE POLICY "Acesso total a admissions" ON admissions FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a admission_stage_history') THEN
+    CREATE POLICY "Acesso total a admission_stage_history" ON admission_stage_history FOR ALL USING (true) WITH CHECK (true);
+  END IF;
 END $$;
+
 

@@ -5,7 +5,7 @@
 import { TAXONOMY, PERSONAS } from '../db/schema.js';
 import { authService } from '../services/authService.js';
 
-export function renderFilterBar(filters, currentView, onFilterChange, onViewChange, onOpenNewJobModal, onOpenNewCandidateModal, onExportCandidates, onExportJobs, onExportAll) {
+export function renderFilterBar(filters, currentView, onFilterChange, onViewChange, onOpenNewJobModal, onOpenNewCandidateModal, onExportCandidates, onExportJobs, onExportAll, onExportAdmissions) {
   const deptSelect = document.getElementById('filter-department');
   const recSelect = document.getElementById('filter-recruiter');
   const searchInput = document.getElementById('filter-search');
@@ -19,9 +19,8 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
   const exportDropdownMenu = document.getElementById('export-dropdown-menu');
   const btnExportCand = document.getElementById('btn-export-candidates');
   const btnExportJobs = document.getElementById('btn-export-jobs');
+  const btnExportAdm = document.getElementById('btn-export-admissions');
   const btnExportAll = document.getElementById('btn-export-all');
-  const btnExportCandTable = document.getElementById('btn-export-candidates-table');
-  const btnExportJobsTable = document.getElementById('btn-export-jobs-table');
 
   // Populate department options
   if (deptSelect && deptSelect.children.length <= 1) {
@@ -64,17 +63,26 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
   const moduleTitleEl = document.getElementById('active-module-title');
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebar-overlay');
-  const sidebarToggle = document.getElementById('sidebar-toggle');
 
   const viewTitles = {
     'dashboard': 'Painel Executivo',
-    'kanban': 'Funil do Candidato',
     'jobs-kanban': 'Funil de Vagas',
-    'applications': 'Tabela de Candidaturas',
-    'jobs': 'Gestão de Vagas',
+    'kanban': 'Funil do Candidato',
+    'admission-kanban': 'Funil de Admissão',
     'talent-bank': 'Banco de Talentos',
     'indicators': 'Indicadores & Métricas'
   };
+
+  const viewSubtitles = {
+    'dashboard': 'Acompanhamento estratégico de vagas, pipeline de candidatos, SLAs e governança de R&S.',
+    'jobs-kanban': 'Acompanhamento do ciclo de vida das vagas abertas por etapas de recrutamento.',
+    'kanban': 'Movimentação e triagem de candidatos em etapas seletivas para a vaga selecionada.',
+    'admission-kanban': 'Acompanhamento das 8 etapas oficiais do processo admissional, exames, links, chamados e onboarding.',
+    'talent-bank': 'Base unificada de talentos para busca, prospecção e reaproveitamento em novas vagas.',
+    'indicators': 'Métricas avançadas de SLA, tempo médio de fechamento e taxas de conversão do funil.'
+  };
+
+  const moduleSubtitleEl = document.getElementById('active-module-subtitle');
 
   // Toggle visibility of global KPI section and controls section for views without global header
   const kpiSection = document.querySelector('.kpi-section');
@@ -95,6 +103,9 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
   if (moduleTitleEl && viewTitles[currentView]) {
     moduleTitleEl.textContent = viewTitles[currentView];
   }
+  if (moduleSubtitleEl && viewSubtitles[currentView]) {
+    moduleSubtitleEl.textContent = viewSubtitles[currentView];
+  }
 
   document.querySelectorAll('.view-panel').forEach(panel => {
     panel.classList.toggle('active', panel.id === `view-${currentView}`);
@@ -113,6 +124,9 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
       if (moduleTitleEl && viewTitles[viewName]) {
         moduleTitleEl.textContent = viewTitles[viewName];
       }
+      if (moduleSubtitleEl && viewSubtitles[viewName]) {
+        moduleSubtitleEl.textContent = viewSubtitles[viewName];
+      }
       
       document.querySelectorAll('.view-panel').forEach(p => {
         p.classList.toggle('active', p.id === `view-${viewName}`);
@@ -128,29 +142,9 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
     };
   });
 
-  // Sidebar toggle button handlers
-  if (sidebarToggle && sidebar) {
-    sidebarToggle.onclick = () => {
-      if (window.innerWidth <= 768) {
-        sidebar.classList.toggle('open');
-        if (sidebarOverlay) sidebarOverlay.classList.toggle('open');
-      } else {
-        sidebar.classList.toggle('collapsed');
-      }
-
-      // Trigger resize events so Chart.js and flex/grid layouts recalculate sizes
-      const triggerResize = () => window.dispatchEvent(new Event('resize'));
-      triggerResize();
-      setTimeout(triggerResize, 100);
-      setTimeout(triggerResize, 260);
-    };
-
-    if (!sidebar.dataset.hasResizeListener) {
-      sidebar.dataset.hasResizeListener = 'true';
-      sidebar.addEventListener('transitionend', () => {
-        window.dispatchEvent(new Event('resize'));
-      });
-    }
+  // O menu lateral é permanentemente fixo
+  if (sidebar) {
+    sidebar.classList.remove('collapsed');
   }
   if (sidebarOverlay && sidebar) {
     sidebarOverlay.onclick = () => {
@@ -192,6 +186,13 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
     };
   }
 
+  if (btnExportAdm) {
+    btnExportAdm.onclick = () => {
+      if (exportDropdownMenu) exportDropdownMenu.style.display = 'none';
+      if (onExportAdmissions) onExportAdmissions();
+    };
+  }
+
   if (btnExportAll) {
     btnExportAll.onclick = () => {
       if (exportDropdownMenu) exportDropdownMenu.style.display = 'none';
@@ -199,21 +200,9 @@ export function renderFilterBar(filters, currentView, onFilterChange, onViewChan
     };
   }
 
-  if (btnExportCandTable) {
-    btnExportCandTable.onclick = () => {
-      if (onExportCandidates) onExportCandidates();
-    };
-  }
-
-  if (btnExportJobsTable) {
-    btnExportJobsTable.onclick = () => {
-      if (onExportJobs) onExportJobs();
-    };
-  }
-
   // CA-01 & RN-04: Button visibility based on current view & RBAC persona
-  const isJobView = currentView === 'jobs-kanban' || currentView === 'jobs';
-  const isCandidateView = currentView === 'kanban' || currentView === 'applications';
+  const isJobView = currentView === 'jobs-kanban';
+  const isCandidateView = currentView === 'kanban';
 
   if (btnNewJob) {
     const canCreate = authService.canCreateJob();

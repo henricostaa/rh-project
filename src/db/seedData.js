@@ -127,6 +127,7 @@ export const INITIAL_CANDIDATES = [
     email: 'gabriel.santos@email.com',
     phone: '(11) 98765-4321',
     source: 'LinkedIn',
+    gender: 'Masculino',
     created_at: new Date(Date.now() - 12 * 86400000).toISOString()
   },
   {
@@ -135,6 +136,7 @@ export const INITIAL_CANDIDATES = [
     email: 'camila.souza@email.com',
     phone: '(41) 99887-1122',
     source: 'Indicação Colaborador',
+    gender: 'Feminino',
     created_at: new Date(Date.now() - 14 * 86400000).toISOString()
   },
   {
@@ -143,6 +145,7 @@ export const INITIAL_CANDIDATES = [
     email: 'marcelo.mendes@email.com',
     phone: '(19) 97123-8899',
     source: 'Consultoria',
+    gender: 'Masculino',
     created_at: new Date(Date.now() - 18 * 86400000).toISOString()
   },
   {
@@ -151,6 +154,7 @@ export const INITIAL_CANDIDATES = [
     email: 'juliana.paes@email.com',
     phone: '(31) 99112-3344',
     source: 'ATS Plurix',
+    gender: 'Feminino',
     created_at: new Date(Date.now() - 4 * 86400000).toISOString()
   },
   {
@@ -159,6 +163,7 @@ export const INITIAL_CANDIDATES = [
     email: 'rodrigo.ramos@email.com',
     phone: '(11) 98112-9988',
     source: 'Mov. Interna',
+    gender: 'Masculino',
     created_at: new Date(Date.now() - 2 * 86400000).toISOString()
   }
 ];
@@ -304,4 +309,222 @@ export const INITIAL_JOB_HISTORY = [
     changed_at: new Date(Date.now() - 20 * 86400000).toISOString()
   }
 ];
+
+export const INITIAL_ADMISSIONS = [
+  {
+    id: 'adm-001',
+    candidate_id: 'cand-001',
+    job_id: 'VAG-101',
+    application_id: 'app-001',
+    current_stage: 'Carta Oferta (Assinatura Gestor e Candidato)',
+    status: 'EM_ANDAMENTO',
+    start_date: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
+    salary: 10500,
+    responsible_email: 'fatima@plurix.com.br',
+    checklist: {
+      oferta_gestor_assinado: true,
+      oferta_gestor_data: new Date(Date.now() - 1 * 86400000).toISOString(),
+      oferta_candidato_assinado: false,
+      oferta_candidato_data: null,
+      link_admissao_enviado: false,
+      link_admissao_status: 'Pendente',
+      exame_protocolo: '',
+      exame_clinica: '',
+      exame_data: null,
+      exame_aso_status: 'Pendente',
+      carta_banco_dispensada: false,
+      carta_banco_emitida: false,
+      chamado_dp_numero: '',
+      chamado_dp_status: 'Pendente',
+      email_confirmacao_enviado: false,
+      glpi_ticket_numero: '',
+      glpi_solicitado_notebook: true,
+      glpi_solicitado_email: true,
+      glpi_status: 'Pendente',
+      planilha_inserida: false,
+      matricula_gerada: ''
+    },
+    notes: 'Aguardando retorno do candidato com a carta oferta assinada.',
+    stage_entered_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    completed_at: null
+  },
+  {
+    id: 'adm-002',
+    candidate_id: 'cand-002',
+    job_id: 'VAG-102',
+    application_id: 'app-003',
+    current_stage: 'Abertura Chamado Exame Admissão',
+    status: 'EM_ANDAMENTO',
+    start_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+    salary: 12500,
+    responsible_email: 'julia@plurix.com.br',
+    checklist: {
+      oferta_gestor_assinado: true,
+      oferta_gestor_data: new Date(Date.now() - 5 * 86400000).toISOString(),
+      oferta_candidato_assinado: true,
+      oferta_candidato_data: new Date(Date.now() - 4 * 86400000).toISOString(),
+      link_admissao_enviado: true,
+      link_admissao_data: new Date(Date.now() - 3 * 86400000).toISOString(),
+      link_admissao_status: 'Documentos Enviados',
+      exame_protocolo: 'MED-2026-8841',
+      exame_clinica: 'Clínica Saúde Ocupacional Curitiba',
+      exame_data: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+      exame_aso_status: 'Agendado',
+      carta_banco_dispensada: false,
+      carta_banco_emitida: false,
+      chamado_dp_numero: '',
+      chamado_dp_status: 'Pendente',
+      email_confirmacao_enviado: false,
+      glpi_ticket_numero: '',
+      glpi_solicitado_notebook: true,
+      glpi_solicitado_email: true,
+      glpi_status: 'Pendente',
+      planilha_inserida: false,
+      matricula_gerada: ''
+    },
+    notes: 'Exame agendado para depois de amanhã. Candidata já anexou certidões e comprovantes.',
+    stage_entered_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    completed_at: null
+  },
+  {
+    id: 'adm-003',
+    candidate_id: 'cand-003',
+    job_id: 'VAG-103',
+    application_id: 'app-004',
+    current_stage: 'Formulário de Acessos GLPI',
+    status: 'EM_ANDAMENTO',
+    start_date: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+    salary: 32000,
+    responsible_email: 'luana@plurix.com.br',
+    checklist: {
+      oferta_gestor_assinado: true,
+      oferta_gestor_data: new Date(Date.now() - 8 * 86400000).toISOString(),
+      oferta_candidato_assinado: true,
+      oferta_candidato_data: new Date(Date.now() - 7 * 86400000).toISOString(),
+      link_admissao_enviado: true,
+      link_admissao_data: new Date(Date.now() - 6 * 86400000).toISOString(),
+      link_admissao_status: 'Aprovado',
+      exame_protocolo: 'MED-2026-7910',
+      exame_clinica: 'Laboratório Fleury - Higienópolis',
+      exame_data: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
+      exame_aso_status: 'Apto',
+      carta_banco_dispensada: true, // Já possui conta no banco
+      carta_banco_emitida: false,
+      chamado_dp_numero: 'DP-2026-551',
+      chamado_dp_responsavel: 'Mariana DP',
+      chamado_dp_status: 'Concluído',
+      email_confirmacao_enviado: true,
+      email_confirmacao_data: new Date(Date.now() - 2 * 86400000).toISOString(),
+      glpi_ticket_numero: 'GLPI-84910',
+      glpi_solicitado_notebook: true,
+      glpi_solicitado_email: true,
+      glpi_solicitado_vpn: true,
+      glpi_solicitado_cracha: true,
+      glpi_status: 'Em Atendimento',
+      planilha_inserida: false,
+      matricula_gerada: ''
+    },
+    notes: 'Chamado GLPI aberto para configuração de MacBook e acesso à rede executiva.',
+    stage_entered_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
+    completed_at: null
+  },
+  {
+    id: 'adm-004',
+    candidate_id: 'cand-004',
+    job_id: 'VAG-104',
+    application_id: 'app-002',
+    current_stage: 'Admissão Concluída',
+    status: 'CONCLUIDO',
+    start_date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+    salary: 9500,
+    responsible_email: 'bp.digital@plurix.com.br',
+    checklist: {
+      oferta_gestor_assinado: true,
+      oferta_candidato_assinado: true,
+      link_admissao_enviado: true,
+      link_admissao_status: 'Aprovado',
+      exame_aso_status: 'Apto',
+      carta_banco_dispensada: true,
+      chamado_dp_numero: 'DP-2026-499',
+      chamado_dp_status: 'Concluído',
+      email_confirmacao_enviado: true,
+      glpi_ticket_numero: 'GLPI-84102',
+      glpi_status: 'Concluído',
+      planilha_inserida: true,
+      matricula_gerada: 'PLX-0982'
+    },
+    notes: 'Admissão finalizada e homologada. Colaboradora já integrada na equipe Digital.',
+    stage_entered_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+    completed_at: new Date(Date.now() - 2 * 86400000).toISOString()
+  },
+  {
+    id: 'adm-005',
+    candidate_id: 'cand-005',
+    job_id: 'VAG-105',
+    application_id: 'app-005',
+    current_stage: 'Envio do Link de Admissão',
+    status: 'EM_ANDAMENTO',
+    start_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+    salary: 19000,
+    responsible_email: 'bp.comercial@plurix.com.br',
+    checklist: {
+      oferta_gestor_assinado: true,
+      oferta_candidato_assinado: true,
+      link_admissao_enviado: true,
+      link_admissao_status: 'Em Preenchimento',
+      exame_aso_status: 'Pendente',
+      carta_banco_dispensada: false,
+      chamado_dp_status: 'Pendente',
+      email_confirmacao_enviado: false,
+      glpi_status: 'Pendente',
+      planilha_inserida: false,
+      matricula_gerada: ''
+    },
+    notes: 'Candidato já está preenchendo os dados no portal de admissão.',
+    stage_entered_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    completed_at: null
+  }
+];
+
+export const INITIAL_ADMISSION_STAGE_HISTORY = [
+  {
+    id: 'adm-hist-001',
+    admission_id: 'adm-001',
+    previous_stage: 'Início da Admissão',
+    new_stage: 'Carta Oferta (Assinatura Gestor e Candidato)',
+    status_at_move: 'EM_ANDAMENTO',
+    feedback: 'Processo de admissão iniciado após aprovação na etapa final de seleção.',
+    moved_by: 'fatima@plurix.com.br',
+    duration_days: 0,
+    moved_at: new Date(Date.now() - 2 * 86400000).toISOString()
+  },
+  {
+    id: 'adm-hist-002',
+    admission_id: 'adm-002',
+    previous_stage: 'Carta Oferta (Assinatura Gestor e Candidato)',
+    new_stage: 'Envio do Link de Admissão',
+    status_at_move: 'EM_ANDAMENTO',
+    feedback: 'Carta oferta devidamente assinada por ambas as partes.',
+    moved_by: 'julia@plurix.com.br',
+    duration_days: 2,
+    moved_at: new Date(Date.now() - 3 * 86400000).toISOString()
+  },
+  {
+    id: 'adm-hist-003',
+    admission_id: 'adm-002',
+    previous_stage: 'Envio do Link de Admissão',
+    new_stage: 'Abertura Chamado Exame Admissão',
+    status_at_move: 'EM_ANDAMENTO',
+    feedback: 'Documentos anexados no link com sucesso. Encaminhada para exame médico admissional.',
+    moved_by: 'julia@plurix.com.br',
+    duration_days: 2,
+    moved_at: new Date(Date.now() - 1 * 86400000).toISOString()
+  }
+];
+
 
