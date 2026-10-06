@@ -39,11 +39,11 @@ export function renderJobsTable(jobs, onAssignClick, onJobClick, onDeleteJobClic
             ${job.title}
             ${job.is_confidential ? '<span class="badge badge-confidential" style="margin-left: 6px;">Confidencial</span>' : ''}
           </div>
-          <div class="cell-sub">${job.selection_type} • ${job.headcount_type} ${job.is_pcd ? '• PCD' : ''}</div>
+          <div class="cell-sub">${job.selection_type} • ${job.headcount_type}${job.replaced_employee ? ` (${job.replaced_employee})` : ''} ${job.is_pcd ? '• PCD' : ''}</div>
         </td>
         <td>
           <div class="cell-main">${job.business_unit}</div>
-          <div class="cell-sub">${job.department}</div>
+          <div class="cell-sub">${job.department}${(job.location_city || job.location_state) ? ` • 📍 ${job.location_city || ''}${job.location_state ? `/${job.location_state}` : ''}` : ''}</div>
         </td>
         <td>
           <div class="cell-main">${job.bp_in_charge_email}</div>

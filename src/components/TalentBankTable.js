@@ -32,8 +32,9 @@ export function renderTalentBankTable(candidates, onAttachJobClick, onDeleteCand
       <tr>
         <td>
           <div class="cell-main" style="font-weight: 600; color: var(--navy);">${cand.full_name}</div>
-          <div style="margin-top: 2px;">
+          <div style="margin-top: 2px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
             <span class="badge badge-neutral" style="font-size: 0.7rem;">${cand.gender || 'Não informado'}</span>
+            ${cand.salary_expectation ? `<span class="badge badge-neutral" style="font-size: 0.7rem; background: #f0f9ff; color: #0369a1; border-color: #bae6fd;">💰 R$ ${Number(cand.salary_expectation).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>` : ''}
           </div>
           ${(cand.resume_url || cand.resume_name) ? `
             <div style="margin-top: 4px;">

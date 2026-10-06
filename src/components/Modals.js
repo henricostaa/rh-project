@@ -2,7 +2,7 @@
 // ATS PLURIX 360° | Componente de Modais de Ação e Formulários (Section 10)
 // =============================================================================
 
-import { TAXONOMY, PERSONAS, PROCESS_STAGES, DEFAULT_STAGE_SLAS, calculateTotalJobSLA, ADMISSION_STAGES } from '../db/schema.js';
+import { TAXONOMY, PERSONAS, PROCESS_STAGES, DEFAULT_STAGE_SLAS, calculateTotalJobSLA, ADMISSION_STAGES, BRAZILIAN_STATES } from '../db/schema.js';
 import { store, formatSalaryRange } from '../db/store.js';
 import { authService } from '../services/authService.js';
 import { jobService } from '../services/jobService.js';
@@ -321,12 +321,46 @@ export function openNewJobModal() {
     wmSelect.innerHTML = TAXONOMY.workModels.map(wm => `<option value="${wm}">${wm}</option>`).join('');
   }
 
+  // Preencher Associada e Estado (Alocação)
+  const assocSelect = document.getElementById('job-location-associada');
+  if (assocSelect) {
+    assocSelect.innerHTML = '<option value="">Selecione a Associada...</option>' +
+      TAXONOMY.businessUnits.map(b => `<option value="${b}">${b}</option>`).join('');
+  }
+
+  const stateSelect = document.getElementById('job-location-state');
+  if (stateSelect) {
+    stateSelect.innerHTML = '<option value="">UF</option>' +
+      BRAZILIAN_STATES.map(s => `<option value="${s.uf}">${s.uf} - ${s.name}</option>`).join('');
+  }
+
+  // Alternar visibilidade de Funcionário Substituído com base no Quadro de Vagas
+  const repWrap = document.getElementById('job-replaced-employee-wrap');
+  const repInput = document.getElementById('job-replaced-employee');
+  const updateReplacedVisibility = () => {
+    if (repWrap) {
+      const isSubst = hcSelect.value === 'Substituição';
+      repWrap.style.display = isSubst ? 'flex' : 'none';
+      if (!isSubst && repInput) repInput.value = '';
+    }
+  };
+  hcSelect.onchange = updateReplacedVisibility;
+  updateReplacedVisibility();
+
+  // Sincronizar Associada padrão quando mudar Negócio/Empresa se Associada não foi definida
+  buSelect.onchange = () => {
+    if (assocSelect && (!assocSelect.value || assocSelect.value === '')) {
+      assocSelect.value = buSelect.value;
+    }
+  };
+
   const recruiters = PERSONAS.filter(p => p.role === 'RECRUTADOR' || p.role === 'BP');
   recSelect.innerHTML = '<option value="">Sem recrutadora atribuída (Pendente)</option>' +
     recruiters.map(r => `<option value="${r.email}">${r.name} (${r.email})</option>`).join('');
 
   document.getElementById('form-job').reset();
   if (document.getElementById('job-description')) document.getElementById('job-description').innerHTML = '';
+  updateReplacedVisibility();
 
   // Renderizar os 8 estágios do fluxo oficial com SLAs base configuráveis
   renderSlaStageInputs('new-job-sla-stages-grid', null, 'new-job-total-sla-display', 'new-job-sla-pills');
@@ -358,6 +392,10 @@ function setupJobModal(onSuccessRefresh) {
         department: document.getElementById('job-department').value,
         hiring_manager: document.getElementById('job-hiring-manager').value,
         headcount_type: document.getElementById('job-headcount-type').value,
+        replaced_employee: document.getElementById('job-replaced-employee') ? document.getElementById('job-replaced-employee').value : null,
+        location_associada: document.getElementById('job-location-associada') ? document.getElementById('job-location-associada').value : null,
+        location_city: document.getElementById('job-location-city') ? document.getElementById('job-location-city').value : null,
+        location_state: document.getElementById('job-location-state') ? document.getElementById('job-location-state').value : null,
         selection_type: document.getElementById('job-selection-type').value,
         work_model: document.getElementById('job-work-model') ? document.getElementById('job-work-model').value : 'Presencial',
         positions_count: document.getElementById('job-positions-count') ? Number(document.getElementById('job-positions-count').value) : 1,
@@ -424,6 +462,7 @@ function setupCandidateModal(onSuccessRefresh) {
         phone: document.getElementById('cand-phone').value,
         source: document.getElementById('cand-source').value,
         gender: document.getElementById('cand-gender') ? document.getElementById('cand-gender').value : 'Não informado',
+        salary_expectation: document.getElementById('cand-salary-expectation') ? document.getElementById('cand-salary-expectation').value : null,
         linkedin: document.getElementById('cand-linkedin') ? document.getElementById('cand-linkedin').value : '',
         comment: document.getElementById('cand-comment') ? document.getElementById('cand-comment').value : '',
         resume_name: null,
@@ -639,6 +678,8 @@ export function openJobDetailsModal(jobId) {
       <span class="badge badge-a">Status: ${job.status}</span>
       <span class="badge badge-neutral">${jobAppsCount} candidatura(s)</span>
       <span class="badge badge-neutral">${job.headcount_type}</span>
+      ${job.replaced_employee ? `<span class="badge badge-neutral" style="background: #f0fdf4; color: #166534; border-color: #bbf7d0;">👤 Subst: ${job.replaced_employee}</span>` : ''}
+      ${(job.location_city || job.location_state) ? `<span class="badge badge-neutral" style="background: #f8fafc; color: #334155;">📍 ${job.location_city || ''}${job.location_state ? `/${job.location_state}` : ''}</span>` : ''}
       <span class="badge badge-neutral">${job.selection_type}</span>
       ${job.is_pcd ? '<span class="badge badge-a">♿ PCD</span>' : ''}
       ${job.is_confidential ? '<span class="badge badge-confidential">🔒 Confidencial</span>' : ''}
@@ -681,6 +722,20 @@ export function openJobDetailsModal(jobId) {
       <span class="job-details-label">Diretoria</span>
       <span class="job-details-value">${job.department}</span>
     </div>
+
+    <div class="job-details-item">
+      <span class="job-details-label">📍 Onde Fica Alocado</span>
+      <span class="job-details-value" style="font-weight: 600; color: var(--navy);">
+        ${job.location_associada || job.business_unit}${job.location_city ? ` • ${job.location_city}` : ''}${job.location_state ? `/${job.location_state}` : ''}
+      </span>
+    </div>
+
+    ${(job.headcount_type === 'Substituição' || job.replaced_employee) ? `
+      <div class="job-details-item" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: var(--rs);">
+        <span class="job-details-label" style="color: #166534; font-weight: 700;">👤 Funcionário Substituído</span>
+        <span class="job-details-value" style="color: #14532d; font-weight: 600;">${job.replaced_employee || 'Não informado'}</span>
+      </div>
+    ` : ''}
 
     <div class="job-details-item">
       <span class="job-details-label">Gestor Solicitante</span>
@@ -908,12 +963,17 @@ export function openJobDetailsModal(jobId) {
                       <span>Usuário: <b>${h.changed_by}</b></span>
                       <span>${movedDate}</span>
                     </div>
-                    <div class="timeline-stages" style="font-size: 0.82rem; font-weight: 600; color: var(--navy);">
-                      ${h.previous_status ? `${h.previous_status} &rarr; ` : ''}<b>${h.new_status}</b>
+                    <div class="timeline-stages" style="font-size: 0.82rem; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                      ${h.previous_status && h.previous_status !== h.new_status ? `
+                        <span>${h.previous_status} &rarr; <b>${h.new_status}</b></span>
+                      ` : `
+                        <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.72rem; font-weight: 600;">Alteração Cadastral da Vaga</span>
+                        <span style="font-size: 0.76rem; color: var(--muted); font-weight: 500;">(Status: ${h.new_status})</span>
+                      `}
                     </div>
                     ${h.observation ? `
-                      <div class="timeline-feedback" style="margin-top: 6px; font-size: 0.78rem; font-style: italic; color: #475569; background: #ffffff; padding: 6px 10px; border-radius: 4px; border-left: 3px solid var(--primary);">
-                        "${h.observation}"
+                      <div class="timeline-feedback" style="margin-top: 6px; font-size: 0.78rem; color: #334155; background: #ffffff; padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--primary); line-height: 1.45;">
+                        ${h.observation}
                       </div>
                     ` : ''}
                   </div>
@@ -1283,6 +1343,9 @@ export function openEditCandidateModal(candidateIdOrEmail) {
   if (document.getElementById('edit-cand-gender')) {
     document.getElementById('edit-cand-gender').value = candidate.gender || 'Feminino';
   }
+  if (document.getElementById('edit-cand-salary-expectation')) {
+    document.getElementById('edit-cand-salary-expectation').value = (candidate.salary_expectation !== null && candidate.salary_expectation !== undefined) ? candidate.salary_expectation : '';
+  }
 
   if (document.getElementById('edit-cand-linkedin')) {
     document.getElementById('edit-cand-linkedin').value = candidate.linkedin || '';
@@ -1312,10 +1375,11 @@ function setupEditCandidateModal(onSuccessRefresh) {
         phone: document.getElementById('edit-cand-phone').value,
         source: document.getElementById('edit-cand-source').value,
         gender: document.getElementById('edit-cand-gender') ? document.getElementById('edit-cand-gender').value : (existingCand ? existingCand.gender : 'Não informado'),
+        salary_expectation: document.getElementById('edit-cand-salary-expectation') ? document.getElementById('edit-cand-salary-expectation').value : (existingCand ? existingCand.salary_expectation : null),
         linkedin: document.getElementById('edit-cand-linkedin') ? document.getElementById('edit-cand-linkedin').value : '',
         comment: document.getElementById('edit-cand-comment') ? document.getElementById('edit-cand-comment').value : '',
-        resume_name: resumeName,
-        resume_url: resumeUrl
+        resume_name: existingCand ? existingCand.resume_name : null,
+        resume_url: existingCand ? existingCand.resume_url : null
       };
 
       await candidateService.updateCandidate(candidateId, payload);
@@ -1361,6 +1425,38 @@ export function openEditJobModal(jobId) {
 
   const hcSelect = document.getElementById('edit-job-headcount-type');
   hcSelect.innerHTML = TAXONOMY.headcountTypes.map(h => `<option value="${h}" ${h === job.headcount_type ? 'selected' : ''}>${h}</option>`).join('');
+
+  // Preencher Funcionário Substituído e alternar visibilidade com base no Quadro de Vagas
+  const repWrap = document.getElementById('edit-job-replaced-employee-wrap');
+  const repInput = document.getElementById('edit-job-replaced-employee');
+  if (repInput) repInput.value = job.replaced_employee || '';
+
+  const updateEditReplacedVisibility = () => {
+    if (repWrap) {
+      const isSubst = hcSelect.value === 'Substituição';
+      repWrap.style.display = isSubst ? 'flex' : 'none';
+    }
+  };
+  hcSelect.onchange = updateEditReplacedVisibility;
+  updateEditReplacedVisibility();
+
+  // Preencher Alocação: Associada, Cidade, Estado
+  const assocSelect = document.getElementById('edit-job-location-associada');
+  if (assocSelect) {
+    const selectedAssoc = job.location_associada || job.business_unit || '';
+    assocSelect.innerHTML = '<option value="">Selecione a Associada...</option>' +
+      TAXONOMY.businessUnits.map(b => `<option value="${b}" ${b === selectedAssoc ? 'selected' : ''}>${b}</option>`).join('');
+  }
+
+  const cityInput = document.getElementById('edit-job-location-city');
+  if (cityInput) cityInput.value = job.location_city || '';
+
+  const stateSelect = document.getElementById('edit-job-location-state');
+  if (stateSelect) {
+    const selectedState = job.location_state || '';
+    stateSelect.innerHTML = '<option value="">UF</option>' +
+      BRAZILIAN_STATES.map(s => `<option value="${s.uf}" ${s.uf === selectedState ? 'selected' : ''}>${s.uf} - ${s.name}</option>`).join('');
+  }
 
   const selSelect = document.getElementById('edit-job-selection-type');
   selSelect.innerHTML = TAXONOMY.selectionTypes.map(s => `<option value="${s}" ${s === job.selection_type ? 'selected' : ''}>${s}</option>`).join('');
@@ -1413,6 +1509,10 @@ function setupEditJobModal(onSuccessRefresh) {
         department: document.getElementById('edit-job-department').value,
         hiring_manager: document.getElementById('edit-job-hiring-manager').value,
         headcount_type: document.getElementById('edit-job-headcount-type').value,
+        replaced_employee: document.getElementById('edit-job-replaced-employee') ? document.getElementById('edit-job-replaced-employee').value : null,
+        location_associada: document.getElementById('edit-job-location-associada') ? document.getElementById('edit-job-location-associada').value : null,
+        location_city: document.getElementById('edit-job-location-city') ? document.getElementById('edit-job-location-city').value : null,
+        location_state: document.getElementById('edit-job-location-state') ? document.getElementById('edit-job-location-state').value : null,
         selection_type: document.getElementById('edit-job-selection-type').value,
         work_model: document.getElementById('edit-job-work-model') ? document.getElementById('edit-job-work-model').value : 'Presencial',
         positions_count: document.getElementById('edit-job-positions-count') ? Number(document.getElementById('edit-job-positions-count').value) : 1,
@@ -1519,6 +1619,7 @@ export function openCandidateHistoryModal(candidateIdOrEmail) {
         <div style="font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 4px;">${cand.full_name}</div>
         <div><b>E-mail:</b> ${cand.email} | <b>Telefone:</b> ${cand.phone || '--'}</div>
         <div><b>Sexo / Gênero:</b> <span class="badge badge-neutral">${cand.gender || 'Não informado'}</span> | <b>Canal de Origem:</b> ${cand.source || 'N/A'}</div>
+        <div><b>Pretensão Salarial:</b> ${cand.salary_expectation ? `<span style="font-weight: 600; color: #0284c7;">💰 R$ ${Number(cand.salary_expectation).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>` : '<span style="color: var(--muted);">Não informada</span>'}</div>
         ${cand.linkedin ? `<div><b>LinkedIn:</b> <a href="${cand.linkedin}" target="_blank" style="color: var(--primary-color, #00147d); text-decoration: underline;">${cand.linkedin}</a></div>` : ''}
         ${(cand.resume_url || cand.resume_name) ? `
           <div style="margin-top: 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -1585,19 +1686,41 @@ export function openCandidateHistoryModal(candidateIdOrEmail) {
     }
   }
 
-  // Audit timeline
-  const history = pipelineService.getCandidateHistory(cand.id || cand.email);
+  // Audit timeline (Unificado: Alterações Cadastrais + Transições de Etapas)
+  const history = store.getCandidateUnifiedHistory ? store.getCandidateUnifiedHistory(cand.id || cand.email) : pipelineService.getCandidateHistory(cand.id || cand.email);
   const timelineContainer = document.getElementById('cand-history-timeline');
 
   if (timelineContainer) {
     if (history.length === 0) {
       timelineContainer.innerHTML = `
         <div style="text-align: center; color: var(--muted); padding: 16px; font-size: 0.82rem;">
-          Nenhuma movimentação registrada no histórico.
+          Nenhuma movimentação ou alteração registrada no histórico.
         </div>
       `;
     } else {
       timelineContainer.innerHTML = history.map(h => {
+        if (h._type === 'CADASTRAL') {
+          const movedDate = new Date(h.changed_at).toLocaleString('pt-BR');
+          return `
+            <div class="timeline-item" style="padding-bottom: 12px;">
+              <div class="timeline-dot" style="background: #0284c7;"></div>
+              <div class="timeline-card" style="padding: 10px 14px; background: #f0f9ff; border: 1px solid #bae6fd;">
+                <div class="timeline-meta" style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--muted); margin-bottom: 4px;">
+                  <span>Usuário: <b>${h.changed_by}</b></span>
+                  <span>${movedDate}</span>
+                </div>
+                <div class="timeline-stages" style="font-size: 0.82rem; font-weight: 700; color: #0369a1; display: flex; align-items: center; gap: 6px;">
+                  <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.72rem; font-weight: 600;">Alteração Cadastral</span>
+                  <span>${h.action === 'CADASTRO_INICIAL' ? 'Cadastro Inicial' : (h.action === 'TRANSFERENCIA_VAGA' ? 'Transferência' : 'Dados Atualizados')}</span>
+                </div>
+                <div class="timeline-feedback" style="margin-top: 6px; font-size: 0.78rem; color: #334155; background: #ffffff; padding: 8px 10px; border-radius: 4px; border-left: 3px solid #0284c7; line-height: 1.45;">
+                  ${h.description}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
         const movedDate = new Date(h.moved_at).toLocaleString('pt-BR');
         return `
           <div class="timeline-item" style="padding-bottom: 12px;">
@@ -1826,32 +1949,79 @@ export function openAdmissionDetailsModal(admissionId) {
   step5Badge.textContent = checklist.chamado_dp_status || 'Pendente';
   step5Badge.className = 'badge ' + (step5Done ? 'badge-a' : 'badge-neutral');
 
-  // 6. E-mail de Confirmação
-  document.getElementById('chk-email-confirmacao').checked = !!checklist.email_confirmacao_enviado;
+  // 6. E-mail de Confirmação ao Gestor
+  const chkEmailConfirmacao = document.getElementById('chk-email-confirmacao');
+  const chkEmailAceite = document.getElementById('chk-email-aceite');
+  const chkEmailFormAcessos = document.getElementById('chk-email-form-acessos');
+  const inputEmailPrevisao = document.getElementById('input-email-previsao-inicio');
+
+  if (chkEmailConfirmacao) chkEmailConfirmacao.checked = !!checklist.email_confirmacao_enviado;
+  if (chkEmailAceite) {
+    chkEmailAceite.checked = checklist.email_confirmacao_aceite !== undefined
+      ? !!checklist.email_confirmacao_aceite
+      : !!checklist.email_confirmacao_enviado;
+  }
+  if (chkEmailFormAcessos) {
+    chkEmailFormAcessos.checked = checklist.email_confirmacao_form_acessos !== undefined
+      ? !!checklist.email_confirmacao_form_acessos
+      : !!checklist.email_confirmacao_enviado;
+  }
+  if (inputEmailPrevisao) {
+    inputEmailPrevisao.value = checklist.email_confirmacao_previsao_inicio || (adm.start_date ? String(adm.start_date).split('T')[0] : '');
+  }
+
   const step6Done = !!checklist.email_confirmacao_enviado;
   const step6Badge = document.getElementById('step6-status-badge');
-  step6Badge.textContent = step6Done ? 'Enviado' : 'Pendente';
-  step6Badge.className = 'badge ' + (step6Done ? 'badge-a' : 'badge-neutral');
+  if (step6Badge) {
+    step6Badge.textContent = step6Done ? 'Enviado' : 'Pendente';
+    step6Badge.className = 'badge ' + (step6Done ? 'badge-a' : 'badge-neutral');
+  }
 
-  // 7. Formulário GLPI
-  document.getElementById('input-glpi-ticket').value = checklist.glpi_ticket_numero || '';
-  document.getElementById('sel-glpi-status').value = checklist.glpi_status || 'Pendente';
-  document.getElementById('chk-glpi-notebook').checked = checklist.glpi_solicitado_notebook !== false;
-  document.getElementById('chk-glpi-email').checked = checklist.glpi_solicitado_email !== false;
-  document.getElementById('chk-glpi-vpn').checked = !!checklist.glpi_solicitado_vpn;
-  document.getElementById('chk-glpi-cracha').checked = checklist.glpi_solicitado_cracha !== false;
-  const step7Done = checklist.glpi_status === 'Concluído';
+  // 7. Formulário GLPI (Equipamentos e Acessos)
+  const inputGlpiTicket = document.getElementById('input-glpi-ticket');
+  const selGlpiStatus = document.getElementById('sel-glpi-status');
+  const selGlpiStatusEquip = document.getElementById('sel-glpi-status-equipamento');
+  const selGlpiStatusAcesso = document.getElementById('sel-glpi-status-acesso');
+  const chkGlpiEquip = document.getElementById('chk-glpi-equipamentos');
+  const chkGlpiAcessos = document.getElementById('chk-glpi-acessos');
+
+  if (inputGlpiTicket) inputGlpiTicket.value = checklist.glpi_ticket_numero || '';
+  if (selGlpiStatus) selGlpiStatus.value = checklist.glpi_status || 'Pendente';
+  if (selGlpiStatusEquip) selGlpiStatusEquip.value = checklist.glpi_status_equipamento || checklist.glpi_status || 'Pendente';
+  if (selGlpiStatusAcesso) selGlpiStatusAcesso.value = checklist.glpi_status_acesso || checklist.glpi_status || 'Pendente';
+
+  if (chkGlpiEquip) {
+    chkGlpiEquip.checked = checklist.glpi_solicitado_equipamentos !== undefined
+      ? !!checklist.glpi_solicitado_equipamentos
+      : (checklist.glpi_solicitado_notebook !== false);
+  }
+  if (chkGlpiAcessos) {
+    chkGlpiAcessos.checked = checklist.glpi_solicitado_acessos !== undefined
+      ? !!checklist.glpi_solicitado_acessos
+      : (checklist.glpi_solicitado_email !== false || !!checklist.glpi_solicitado_vpn);
+  }
+
+  const step7Status = checklist.glpi_status || 'Pendente';
+  const step7Done = step7Status === 'Concluído';
   const step7Badge = document.getElementById('step7-status-badge');
-  step7Badge.textContent = checklist.glpi_status || 'Pendente';
-  step7Badge.className = 'badge ' + (step7Done ? 'badge-a' : 'badge-neutral');
+  if (step7Badge) {
+    step7Badge.textContent = step7Status;
+    step7Badge.className = 'badge ' + (step7Done ? 'badge-a' : (step7Status === 'Em Atendimento' || step7Status === 'Aberto') ? 'badge-w' : 'badge-neutral');
+  }
 
   // 8. Planilha Admissão
   document.getElementById('chk-planilha-inserida').checked = !!checklist.planilha_inserida;
+  const chkInformeBp = document.getElementById('chk-informe-bp');
+  if (chkInformeBp) {
+    chkInformeBp.checked = !!checklist.informe_bp_novo_candidato;
+  }
   document.getElementById('input-matricula-gerada').value = checklist.matricula_gerada || '';
-  const step8Done = !!checklist.planilha_inserida || !!checklist.matricula_gerada;
+  const step8Done = !!checklist.planilha_inserida || !!checklist.informe_bp_novo_candidato || !!checklist.matricula_gerada;
   const step8Badge = document.getElementById('step8-status-badge');
-  step8Badge.textContent = step8Done ? 'Lançado' : 'Pendente';
-  step8Badge.className = 'badge ' + (step8Done ? 'badge-a' : 'badge-neutral');
+  if (step8Badge) {
+    step8Badge.textContent = step8Done ? 'Lançado' : 'Pendente';
+    step8Badge.className = 'badge ' + (step8Done ? 'badge-a' : 'badge-neutral');
+  }
 
   // Observações
   document.getElementById('admission-details-notes').value = adm.notes || '';
@@ -1920,16 +2090,23 @@ function setupAdmissionDetailsModal(onSuccessRefresh) {
         chamado_dp_responsavel: document.getElementById('input-dp-responsavel').value.trim(),
         chamado_dp_status: document.getElementById('sel-dp-status').value,
 
-        email_confirmacao_enviado: document.getElementById('chk-email-confirmacao').checked,
+        email_confirmacao_enviado: document.getElementById('chk-email-confirmacao') ? document.getElementById('chk-email-confirmacao').checked : false,
+        email_confirmacao_aceite: document.getElementById('chk-email-aceite') ? document.getElementById('chk-email-aceite').checked : false,
+        email_confirmacao_form_acessos: document.getElementById('chk-email-form-acessos') ? document.getElementById('chk-email-form-acessos').checked : false,
+        email_confirmacao_previsao_inicio: document.getElementById('input-email-previsao-inicio') ? document.getElementById('input-email-previsao-inicio').value : '',
 
-        glpi_ticket_numero: document.getElementById('input-glpi-ticket').value.trim(),
-        glpi_status: document.getElementById('sel-glpi-status').value,
-        glpi_solicitado_notebook: document.getElementById('chk-glpi-notebook').checked,
-        glpi_solicitado_email: document.getElementById('chk-glpi-email').checked,
-        glpi_solicitado_vpn: document.getElementById('chk-glpi-vpn').checked,
-        glpi_solicitado_cracha: document.getElementById('chk-glpi-cracha').checked,
+        glpi_ticket_numero: document.getElementById('input-glpi-ticket') ? document.getElementById('input-glpi-ticket').value.trim() : '',
+        glpi_status: document.getElementById('sel-glpi-status') ? document.getElementById('sel-glpi-status').value : 'Pendente',
+        glpi_status_equipamento: document.getElementById('sel-glpi-status-equipamento') ? document.getElementById('sel-glpi-status-equipamento').value : 'Pendente',
+        glpi_status_acesso: document.getElementById('sel-glpi-status-acesso') ? document.getElementById('sel-glpi-status-acesso').value : 'Pendente',
+        glpi_solicitado_equipamentos: document.getElementById('chk-glpi-equipamentos') ? document.getElementById('chk-glpi-equipamentos').checked : true,
+        glpi_solicitado_acessos: document.getElementById('chk-glpi-acessos') ? document.getElementById('chk-glpi-acessos').checked : true,
+        // Compatibilidade legada
+        glpi_solicitado_notebook: document.getElementById('chk-glpi-equipamentos') ? document.getElementById('chk-glpi-equipamentos').checked : true,
+        glpi_solicitado_email: document.getElementById('chk-glpi-acessos') ? document.getElementById('chk-glpi-acessos').checked : true,
 
         planilha_inserida: document.getElementById('chk-planilha-inserida').checked,
+        informe_bp_novo_candidato: document.getElementById('chk-informe-bp') ? document.getElementById('chk-informe-bp').checked : false,
         matricula_gerada: document.getElementById('input-matricula-gerada').value.trim()
       };
 
@@ -1945,6 +2122,102 @@ function setupAdmissionDetailsModal(onSuccessRefresh) {
       if (onSuccessRefresh) onSuccessRefresh();
     };
   }
+
+  // Sincronização interativa do E-mail de Confirmação ao Gestor
+  const chkEmail = document.getElementById('chk-email-confirmacao');
+  const chkAceite = document.getElementById('chk-email-aceite');
+  const chkForm = document.getElementById('chk-email-form-acessos');
+  const badgeStep6 = document.getElementById('step6-status-badge');
+
+  if (chkEmail) {
+    chkEmail.onchange = () => {
+      const isChecked = chkEmail.checked;
+      if (badgeStep6) {
+        badgeStep6.textContent = isChecked ? 'Enviado' : 'Pendente';
+        badgeStep6.className = 'badge ' + (isChecked ? 'badge-a' : 'badge-neutral');
+      }
+      if (isChecked) {
+        if (chkAceite && !chkAceite.checked) chkAceite.checked = true;
+        if (chkForm && !chkForm.checked) chkForm.checked = true;
+      }
+    };
+  }
+
+  if (chkAceite && chkForm && chkEmail) {
+    const handleSubChecks = () => {
+      if (chkAceite.checked && chkForm.checked) {
+        chkEmail.checked = true;
+        if (badgeStep6) {
+          badgeStep6.textContent = 'Enviado';
+          badgeStep6.className = 'badge badge-a';
+        }
+      }
+    };
+    chkAceite.onchange = handleSubChecks;
+    chkForm.onchange = handleSubChecks;
+  }
+
+  // Sincronização interativa dos status do GLPI (Geral, Equipamento e Acesso)
+  const selGlpi = document.getElementById('sel-glpi-status');
+  const selEquip = document.getElementById('sel-glpi-status-equipamento');
+  const selAcesso = document.getElementById('sel-glpi-status-acesso');
+  const badgeStep7 = document.getElementById('step7-status-badge');
+
+  const updateStep7Badge = (status) => {
+    if (!badgeStep7) return;
+    badgeStep7.textContent = status;
+    badgeStep7.className = 'badge ' + (status === 'Concluído' ? 'badge-a' : (status === 'Em Atendimento' || status === 'Aberto') ? 'badge-w' : 'badge-neutral');
+  };
+
+  if (selGlpi) {
+    selGlpi.onchange = () => {
+      const val = selGlpi.value;
+      updateStep7Badge(val);
+      if (val === 'Concluído') {
+        if (selEquip && selEquip.value !== 'Concluído') selEquip.value = 'Concluído';
+        if (selAcesso && selAcesso.value !== 'Concluído') selAcesso.value = 'Concluído';
+      }
+    };
+  }
+
+  if (selEquip && selAcesso && selGlpi) {
+    const handleSubStatusChange = () => {
+      const eVal = selEquip.value;
+      const aVal = selAcesso.value;
+      if (eVal === 'Concluído' && aVal === 'Concluído') {
+        selGlpi.value = 'Concluído';
+      } else if (eVal === 'Em Atendimento' || aVal === 'Em Atendimento') {
+        selGlpi.value = 'Em Atendimento';
+      } else if (eVal === 'Aberto' || aVal === 'Aberto') {
+        if (selGlpi.value !== 'Em Atendimento') selGlpi.value = 'Aberto';
+      } else if (eVal === 'Pendente' && aVal === 'Pendente') {
+        selGlpi.value = 'Pendente';
+      }
+      updateStep7Badge(selGlpi.value);
+    };
+
+    selEquip.onchange = handleSubStatusChange;
+    selAcesso.onchange = handleSubStatusChange;
+  }
+
+  // Sincronização interativa do Step 8 (Planilha e Informe BP)
+  const chkPlanilha = document.getElementById('chk-planilha-inserida');
+  const chkInforme = document.getElementById('chk-informe-bp');
+  const inputMatricula = document.getElementById('input-matricula-gerada');
+  const badgeStep8 = document.getElementById('step8-status-badge');
+
+  const updateStep8Badge = () => {
+    if (!badgeStep8) return;
+    const isDone = (chkPlanilha && chkPlanilha.checked) ||
+                   (chkInforme && chkInforme.checked) ||
+                   (inputMatricula && inputMatricula.value.trim().length > 0);
+    badgeStep8.textContent = isDone ? 'Lançado' : 'Pendente';
+    badgeStep8.className = 'badge ' + (isDone ? 'badge-a' : 'badge-neutral');
+  };
+
+  if (chkPlanilha) chkPlanilha.onchange = updateStep8Badge;
+  if (chkInforme) chkInforme.onchange = updateStep8Badge;
+  if (inputMatricula) inputMatricula.oninput = updateStep8Badge;
 
   if (btnAdvance) {
     btnAdvance.onclick = () => {

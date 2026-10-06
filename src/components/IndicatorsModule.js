@@ -5,14 +5,30 @@
 
 import Chart from 'chart.js/auto';
 import { store } from '../db/store.js';
-import { TAXONOMY, PERSONAS, ADMISSION_STAGES, getAdmissionStageSLALimit } from '../db/schema.js';
+import { 
+  TAXONOMY, 
+  PERSONAS, 
+  PROCESS_STAGES, 
+  getStageSLALimit, 
+  getRoleLevelSLA, 
+  calculateTotalJobSLA, 
+  ADMISSION_STAGES, 
+  getAdmissionStageSLALimit 
+} from '../db/schema.js';
 
 // Cache global para controle de instâncias dos gráficos (evita memory leaks / erros de canvas reuse)
 let activeChartInstances = {};
 
-// Controle de sub-aba ativa no módulo de indicadores: 'all' | 'rs' | 'admissions'
+// Controle de sub-aba ativa no módulo de indicadores: 'all' | 'rs' | 'admissions' | 'sla'
 let currentIndicatorsTab = 'all';
 let lastRenderArgs = { jobs: [], applications: [], admissions: [] };
+
+export function setIndicatorsSubtab(tabName) {
+  currentIndicatorsTab = tabName;
+  if (lastRenderArgs.jobs && lastRenderArgs.jobs.length > 0) {
+    renderIndicatorsModule(lastRenderArgs.jobs, lastRenderArgs.applications, lastRenderArgs.admissions);
+  }
+}
 
 function destroyExistingCharts() {
   Object.keys(activeChartInstances).forEach(key => {
@@ -50,7 +66,7 @@ function getAdmissionChecklistProgress(adm) {
   if (chk.chamado_dp_status === 'Concluído' || chk.chamado_dp_status === 'Aberto') doneSteps++;
   if (chk.email_confirmacao_enviado) doneSteps++;
   if (chk.glpi_status === 'Concluído' || chk.glpi_status === 'Em Atendimento') doneSteps++;
-  if (chk.planilha_inserida || chk.matricula_gerada) doneSteps++;
+  if (chk.planilha_inserida || chk.informe_bp_novo_candidato || chk.matricula_gerada) doneSteps++;
 
   return {
     doneSteps,
@@ -131,6 +147,153 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
 
     return { stage, count, pct, avgDays };
   });
+
+  // ---------------------------------------------------------------------------
+  // Apuração de SLA por Vaga e Candidato
+  // ---------------------------------------------------------------------------
+  const jobSlaStats = allJobs.map(job => {
+    const jobApps = allApps.filter(a => a.job_id === job.id);
+    const totalApps = jobApps.length;
+    let noPrazo = 0;
+    let atencao = 0;
+    let estourado = 0;
+
+    const candidatesList = jobApps.map(app => {
+      const cand = app.candidate || (store.candidates ? store.candidates.find(c => c.id === app.candidate_id) : null);
+      const sla = store.calculateSLA(app, job);
+      if (sla.code === 'NO_PRAZO') noPrazo++;
+      else if (sla.code === 'ATENCAO') atencao++;
+      else if (sla.code === 'ESTOURADO') estourado++;
+
+      const enteredAt = app.stage_entered_at ? new Date(app.stage_entered_at) : (app.created_at ? new Date(app.created_at) : new Date());
+      const daysInStage = Math.max(0, Math.floor((Date.now() - enteredAt.getTime()) / 86400000));
+      const slaLimit = sla.limit || 4;
+      const remainingDays = Math.max(0, slaLimit - daysInStage);
+      const overdueDays = Math.max(0, daysInStage - slaLimit);
+
+      return {
+        applicationId: app.id,
+        candidateId: cand ? cand.id : app.candidate_id,
+        name: cand ? cand.full_name : 'Candidato',
+        email: cand ? cand.email : '',
+        phone: cand ? cand.phone : '',
+        source: cand ? cand.source : 'Outros',
+        currentStage: app.current_stage,
+        status: app.status,
+        enteredAt: app.stage_entered_at,
+        daysInStage,
+        slaLimit,
+        slaCode: sla.code,
+        slaBadgeClass: sla.badgeClass,
+        slaLabel: sla.label,
+        remainingDays,
+        overdueDays
+      };
+    });
+
+    const jobSla = store.calculateJobSLA(job);
+    const jobTotalSlaDays = store.getJobTotalSLA(job) || getRoleLevelSLA(job.title);
+    const openedAt = job.opened_at ? new Date(job.opened_at) : new Date();
+    const daysOpen = Math.max(0, Math.floor((Date.now() - openedAt.getTime()) / 86400000));
+    const jobSlaConformity = totalApps > 0 ? Math.round((noPrazo / totalApps) * 100) : 100;
+
+    let riskStatus = 'NORMAL';
+    if (estourado > 0) riskStatus = 'CRITICO';
+    else if (atencao > 0) riskStatus = 'ALERTA';
+    else if (totalApps === 0) riskStatus = 'SEM_CANDIDATOS';
+
+    return {
+      job,
+      jobId: job.id,
+      title: job.title,
+      businessUnit: job.business_unit || 'Geral',
+      department: job.department || 'RH',
+      status: job.status,
+      recruiterEmail: job.recruiter_email || 'Não atribuída',
+      bpEmail: job.bp_in_charge_email || '',
+      daysOpen,
+      jobTotalSlaDays,
+      jobStatusSla: jobSla,
+      totalApps,
+      noPrazo,
+      atencao,
+      estourado,
+      conformityPct: jobSlaConformity,
+      riskStatus,
+      candidates: candidatesList
+    };
+  }).sort((a, b) => {
+    if (b.estourado !== a.estourado) return b.estourado - a.estourado;
+    if (b.atencao !== a.atencao) return b.atencao - a.atencao;
+    return b.totalApps - a.totalApps;
+  });
+
+  const totalJobsMonitored = jobSlaStats.length;
+  const jobsWithEstouro = jobSlaStats.filter(j => j.estourado > 0).length;
+  const jobsWithAtencao = jobSlaStats.filter(j => j.atencao > 0 && j.estourado === 0).length;
+  const jobs100Ok = jobSlaStats.filter(j => j.estourado === 0 && j.atencao === 0 && j.totalApps > 0).length;
+
+  // ---------------------------------------------------------------------------
+  // Apuração de SLA por Etapa (Funil R&S)
+  // ---------------------------------------------------------------------------
+  const stageSlaStats = TAXONOMY.funnelStages.map((stageName, idx) => {
+    const stageApps = allApps.filter(a => a.current_stage === stageName && a.status === 'EM_ANDAMENTO');
+    const count = stageApps.length;
+    const slaLimit = getStageSLALimit(stageName, null);
+
+    let noPrazo = 0;
+    let atencao = 0;
+    let estourado = 0;
+    let sumDaysCurrent = 0;
+
+    stageApps.forEach(a => {
+      const sla = store.calculateSLA(a, a.job);
+      if (sla.code === 'NO_PRAZO') noPrazo++;
+      else if (sla.code === 'ATENCAO') atencao++;
+      else if (sla.code === 'ESTOURADO') estourado++;
+
+      const enteredAt = a.stage_entered_at ? new Date(a.stage_entered_at) : (a.created_at ? new Date(a.created_at) : new Date());
+      const daysInStage = Math.max(0, Math.floor((Date.now() - enteredAt.getTime()) / 86400000));
+      sumDaysCurrent += daysInStage;
+    });
+
+    const avgDaysReal = count > 0 ? (sumDaysCurrent / count).toFixed(1) : '0.0';
+    const conformityPct = count > 0 ? Math.round((noPrazo / count) * 100) : 100;
+
+    let bottleneckStatus = 'REGULAR';
+    if (estourado > 0 && ((estourado / count) >= 0.25 || parseFloat(avgDaysReal) > slaLimit)) {
+      bottleneckStatus = 'GARGALO_CRITICO';
+    } else if (atencao > 0 || (count > 0 && parseFloat(avgDaysReal) >= slaLimit - 0.5)) {
+      bottleneckStatus = 'ATENCAO';
+    } else if (count === 0) {
+      bottleneckStatus = 'SEM_CANDIDATOS';
+    }
+
+    const matchedProcessStage = PROCESS_STAGES.find(ps => 
+      ps.name === stageName || 
+      ps.shortName === stageName || 
+      ps.key === stageName || 
+      (ps.aliases && ps.aliases.includes(stageName))
+    );
+
+    return {
+      stageNumber: idx + 1,
+      stageName,
+      shortName: matchedProcessStage ? matchedProcessStage.shortName : stageName,
+      officialStep: matchedProcessStage ? matchedProcessStage.step : (idx + 1),
+      slaLimit,
+      activeCandidates: count,
+      noPrazo,
+      atencao,
+      estourado,
+      conformityPct,
+      avgDaysReal: parseFloat(avgDaysReal),
+      bottleneckStatus
+    };
+  });
+
+  const criticalStagesCount = stageSlaStats.filter(s => s.bottleneckStatus === 'GARGALO_CRITICO').length;
+  const attentionStagesCount = stageSlaStats.filter(s => s.bottleneckStatus === 'ATENCAO').length;
 
   // Desempenho por Recrutadora / BP
   const recruiterStats = PERSONAS.filter(p => p.role === 'RECRUTADOR' || p.role === 'BP' || p.role === 'GESTORA_RH').map(rec => {
@@ -264,7 +427,7 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
     if (chk.glpi_status === 'Concluído') glpiOkCount++;
     else if (chk.glpi_status === 'Em Atendimento' || chk.glpi_status === 'Aberto') glpiEmAtendCount++;
 
-    if (chk.planilha_inserida || chk.matricula_gerada) matriculaOkCount++;
+    if (chk.planilha_inserida || chk.informe_bp_novo_candidato || chk.matricula_gerada) matriculaOkCount++;
   });
 
   const asoAptoPct = totalAdmissions > 0 ? Math.round((asoAptoCount / totalAdmissions) * 100) : 0;
@@ -275,7 +438,8 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
     const inStage = allAdmissions.filter(a => {
       return a.current_stage === stage.name || 
              a.current_stage === stage.shortName || 
-             a.current_stage === stage.key;
+             a.current_stage === stage.key ||
+             (stage.key === 'email_confirmacao' && (a.current_stage === 'E-mail de Confirmação' || a.current_stage === 'E-mail de Confirmação ao Gestor'));
     });
     const count = inStage.length;
     const pct = totalAdmissions > 0 ? Math.round((count / totalAdmissions) * 100) : 0;
@@ -326,6 +490,7 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
   // ---------------------------------------------------------------------------
   const showRs = currentIndicatorsTab === 'all' || currentIndicatorsTab === 'rs';
   const showAdmissions = currentIndicatorsTab === 'all' || currentIndicatorsTab === 'admissions';
+  const showSla = currentIndicatorsTab === 'all' || currentIndicatorsTab === 'sla' || currentIndicatorsTab === 'rs';
 
   container.innerHTML = `
     <div class="metrics-module">
@@ -353,6 +518,11 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
         <button class="indicators-subtab-btn ${currentIndicatorsTab === 'all' ? 'active' : ''}" data-tab="all">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Visão Consolidada 360° (Todos)
+        </button>
+        <button class="indicators-subtab-btn ${currentIndicatorsTab === 'sla' ? 'active' : ''}" data-tab="sla">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Governança de SLAs (Vaga, Candidato &amp; Etapa)
+          <span class="subtab-counter-badge" style="background: ${slaConformityPercent >= 80 ? 'rgba(20, 174, 92, 0.2)' : 'rgba(236, 34, 31, 0.2)'}; color: ${slaConformityPercent >= 80 ? 'var(--pos)' : 'var(--neg)'}; font-weight: 700;">${slaConformityPercent}% OK</span>
         </button>
         <button class="indicators-subtab-btn ${currentIndicatorsTab === 'rs' ? 'active' : ''}" data-tab="rs">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1018,6 +1188,389 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
           </div>
         </div>
       ` : ''}
+
+      ${showSla ? `
+        <!-- =================================================================== -->
+        <!-- SEÇÃO: GOVERNANÇA DE SLAS (VAGAS, CANDIDATOS E ETAPAS DO FUNIL)     -->
+        <!-- =================================================================== -->
+        <div class="indicator-domain-section" id="section-sla-indicators">
+          <div class="indicator-domain-header">
+            <h3 class="indicator-domain-title">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Governança de SLAs: Monitoramento por Vaga, Candidato e Etapa
+            </h3>
+            <span class="indicator-domain-badge">Auditoria de Prazos &amp; Gargalos</span>
+          </div>
+
+          <!-- Banner de Diagnóstico Executivo de SLA -->
+          ${slaEstourado > 0 ? `
+            <div class="sla-alert-banner danger">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <strong>Atenção Executiva:</strong> Existem <strong>${slaEstourado}</strong> candidato(s) com SLA estourado em <strong>${jobsWithEstouro}</strong> vaga(s) e <strong>${criticalStagesCount}</strong> etapa(s) com risco de gargalo. Recomendado priorizar avanços de etapas com os gestores.
+              </div>
+            </div>
+          ` : `
+            <div class="sla-alert-banner success">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <div>
+                <strong>SLA Sob Controle:</strong> Todos os processos seletivos ativos estão dentro dos prazos operacionais acordados.
+              </div>
+            </div>
+          `}
+
+          <!-- Grade Principal de 5 KPIs Especializados de SLA -->
+          <div class="metrics-kpi-grid">
+            <div class="metrics-card ${slaConformityPercent >= 80 ? 'border-pos' : slaConformityPercent >= 60 ? 'border-gold' : 'border-neg'}">
+              <div class="metrics-card-label">Conformidade Global de SLA</div>
+              <div class="metrics-card-value ${slaConformityPercent >= 80 ? 'text-pos' : slaConformityPercent >= 60 ? 'text-gold' : 'text-neg'}">${slaConformityPercent}%</div>
+              <div class="metrics-card-bar">
+                <div class="metrics-bar-fill" style="width: ${slaConformityPercent}%; background: ${slaConformityPercent >= 80 ? 'var(--pos)' : slaConformityPercent >= 60 ? 'var(--gold)' : 'var(--neg)'};"></div>
+              </div>
+              <div class="metrics-card-footer">
+                <span>${slaNoPrazo} de ${totalApps} candidaturas no prazo</span>
+              </div>
+            </div>
+
+            <div class="metrics-card">
+              <div class="metrics-card-label">SLA Crítico / Estourado</div>
+              <div class="metrics-card-value text-neg">${slaEstourado} <span class="metrics-sub-val">candidatos</span></div>
+              <div class="metrics-card-bar">
+                <div class="metrics-bar-fill" style="width: ${totalApps > 0 ? (slaEstourado / totalApps) * 100 : 0}%; background: var(--neg);"></div>
+              </div>
+              <div class="metrics-card-footer">
+                <span>Prazo máximo da etapa ultrapassado</span>
+              </div>
+            </div>
+
+            <div class="metrics-card">
+              <div class="metrics-card-label">SLA em Alerta / Atenção</div>
+              <div class="metrics-card-value text-gold">${slaAtencao} <span class="metrics-sub-val">candidatos</span></div>
+              <div class="metrics-card-bar">
+                <div class="metrics-bar-fill" style="width: ${totalApps > 0 ? (slaAtencao / totalApps) * 100 : 0}%; background: var(--gold);"></div>
+              </div>
+              <div class="metrics-card-footer">
+                <span>A 1 dia ou menos de estourar</span>
+              </div>
+            </div>
+
+            <div class="metrics-card">
+              <div class="metrics-card-label">Vagas com Candidatos em Atraso</div>
+              <div class="metrics-card-value">${jobsWithEstouro} <span class="metrics-sub-val">/ ${totalJobsMonitored} ativas</span></div>
+              <div class="metrics-card-bar">
+                <div class="metrics-bar-fill" style="width: ${totalJobsMonitored > 0 ? (jobsWithEstouro / totalJobsMonitored) * 100 : 0}%; background: #6366f1;"></div>
+              </div>
+              <div class="metrics-card-footer">
+                <span>${jobs100Ok} vagas 100% no prazo</span>
+              </div>
+            </div>
+
+            <div class="metrics-card">
+              <div class="metrics-card-label">Etapas com Risco de Gargalo</div>
+              <div class="metrics-card-value ${criticalStagesCount > 0 ? 'text-neg' : 'text-pos'}">${criticalStagesCount} <span class="metrics-sub-val">críticas</span></div>
+              <div class="metrics-card-bar">
+                <div class="metrics-bar-fill" style="width: ${stageSlaStats.length > 0 ? (criticalStagesCount / stageSlaStats.length) * 100 : 0}%; background: ${criticalStagesCount > 0 ? 'var(--neg)' : 'var(--pos)'};"></div>
+              </div>
+              <div class="metrics-card-footer">
+                <span>${attentionStagesCount} etapas em atenção</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================= -->
+          <!-- BLOCO 1: INDICADOR DE SLA POR ETAPA                               -->
+          <!-- ================================================================= -->
+          <div class="card" style="margin-top: 10px;">
+            <div class="metrics-section-header">
+              <div>
+                <h3 class="metrics-section-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  Indicador de SLA por Etapa (Diagnóstico do Funil R&amp;S)
+                </h3>
+                <p class="metrics-section-subtitle">Acompanhe a conformidade de prazo, volume de candidatos e tempo médio por fase do processo seletivo.</p>
+              </div>
+              <span class="badge badge-neutral" style="font-size: 0.8rem; font-weight: 600;">${stageSlaStats.length} etapas mapeadas</span>
+            </div>
+
+            <!-- Gráficos de SLA por Etapa (Chart.js) -->
+            <div class="metrics-charts-grid" style="margin-bottom: 24px;">
+              <!-- Gráfico Etapa 1: Distribuição Stacked Bar -->
+              <div class="chart-card">
+                <div class="chart-header">
+                  <div>
+                    <h4 class="chart-title">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                      Distribuição de SLA por Etapa
+                    </h4>
+                    <p class="chart-subtitle">Volume de candidatos No Prazo, Atenção e Estourados em cada fase</p>
+                  </div>
+                </div>
+                <div class="chart-container" style="height: 270px;">
+                  <canvas id="chart-stage-sla-stacked"></canvas>
+                </div>
+              </div>
+
+              <!-- Gráfico Etapa 2: Tempo Médio Real vs Limite SLA -->
+              <div class="chart-card">
+                <div class="chart-header">
+                  <div>
+                    <h4 class="chart-title">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Tempo Médio Real vs. Meta Oficial de SLA
+                    </h4>
+                    <p class="chart-subtitle">Comparativo de dias reais decorridos versus meta acordada de cada etapa</p>
+                  </div>
+                </div>
+                <div class="chart-container" style="height: 270px;">
+                  <canvas id="chart-stage-time-vs-sla"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabela Analítica de SLA por Etapa -->
+            <div class="tbl-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Etapa do Processo</th>
+                    <th>Meta SLA Oficial</th>
+                    <th>Candidatos Ativos</th>
+                    <th>No Prazo</th>
+                    <th>Em Atenção</th>
+                    <th>SLA Estourado</th>
+                    <th>% Conformidade</th>
+                    <th>Tempo Médio Real</th>
+                    <th>Diagnóstico de Gargalo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${stageSlaStats.map(stg => `
+                    <tr>
+                      <td><span class="step-number" style="width: 24px; height: 24px; font-size: 0.75rem;">${stg.stageNumber}</span></td>
+                      <td>
+                        <div class="cell-main" style="font-weight: 700;">${stg.stageName}</div>
+                        <div class="cell-sub">${stg.shortName !== stg.stageName ? `Oficial: ${stg.shortName}` : 'Funil de Atração R&S'}</div>
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral" style="font-family: var(--font-code); font-weight: 700;">
+                          ${stg.slaLimit > 0 ? `${stg.slaLimit} dias` : 'Sem limite'}
+                        </span>
+                      </td>
+                      <td><strong>${stg.activeCandidates}</strong></td>
+                      <td><span class="badge badge-a">${stg.noPrazo}</span></td>
+                      <td><span class="badge badge-b">${stg.atencao}</span></td>
+                      <td><span class="badge badge-c">${stg.estourado}</span></td>
+                      <td style="min-width: 140px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; font-weight: 700; margin-bottom: 3px;">
+                          <span>${stg.conformityPct}%</span>
+                        </div>
+                        <div class="sla-stage-progress-track">
+                          <div class="sla-stage-progress-fill" style="width: ${stg.conformityPct}%; background: ${stg.conformityPct >= 80 ? 'var(--pos)' : stg.conformityPct >= 60 ? 'var(--gold)' : 'var(--neg)'};"></div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="cell-main" style="font-family: var(--font-code); font-weight: 700; color: ${stg.avgDaysReal > stg.slaLimit && stg.slaLimit > 0 ? 'var(--coral)' : 'var(--text-primary)'};">
+                          ${stg.avgDaysReal} dia(s)
+                        </span>
+                      </td>
+                      <td>
+                        ${stg.bottleneckStatus === 'GARGALO_CRITICO' ? `
+                          <span class="sla-bottleneck-badge critico">
+                            🚨 Gargalo Crítico
+                          </span>
+                        ` : stg.bottleneckStatus === 'ATENCAO' ? `
+                          <span class="sla-bottleneck-badge alerta">
+                            ⚠️ Em Alerta
+                          </span>
+                        ` : stg.bottleneckStatus === 'SEM_CANDIDATOS' ? `
+                          <span class="sla-bottleneck-badge vazia">
+                            ⚪ Sem Candidatos
+                          </span>
+                        ` : `
+                          <span class="sla-bottleneck-badge regular">
+                            ✅ Fluxo Regular
+                          </span>
+                        `}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ================================================================= -->
+          <!-- BLOCO 2: INDICADOR DE SLA POR VAGA E CANDIDATO                     -->
+          <!-- ================================================================= -->
+          <div class="card" style="margin-top: 24px;">
+            <div class="metrics-section-header">
+              <div>
+                <h3 class="metrics-section-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  Indicador de SLA por Vaga e Candidato
+                </h3>
+                <p class="metrics-section-subtitle">Visão por requisição de vaga com conformidade de candidatos e detalhamento expansível de cada talento.</p>
+              </div>
+            </div>
+
+            <!-- Gráfico de Desempenho de SLA por Vaga -->
+            <div class="chart-card" style="margin-bottom: 20px;">
+              <div class="chart-header">
+                <div>
+                  <h4 class="chart-title">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    Conformidade de Candidatos por Vaga (Principais Posições)
+                  </h4>
+                  <p class="chart-subtitle">Candidatos no prazo vs em atenção vs estourados nas posições monitoradas</p>
+                </div>
+              </div>
+              <div class="chart-container" style="height: 280px;">
+                <canvas id="chart-jobs-sla-bar"></canvas>
+              </div>
+            </div>
+
+            <!-- Barra de Filtros e Busca Rápida -->
+            <div class="sla-filter-toolbar">
+              <div class="sla-filter-search-box">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="sla-jobs-search-input" placeholder="Filtrar por código/título da vaga, diretoria ou nome do candidato..." />
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <select id="sla-jobs-risk-select" class="sla-filter-select">
+                  <option value="">Todos os Status de Risco</option>
+                  <option value="CRITICO">🚨 Apenas Vagas com Estouro (Críticas)</option>
+                  <option value="ALERTA">⚠️ Apenas Vagas em Alerta (Atenção)</option>
+                  <option value="NORMAL">✅ Apenas Vagas 100% No Prazo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tabela Operacional de Vagas com Sub-Candidatos Expansíveis -->
+            <div class="tbl-wrap">
+              <table class="data-table" id="table-sla-vagas">
+                <thead>
+                  <tr>
+                    <th style="width: 110px;">Código Vaga</th>
+                    <th>Cargo &amp; Área</th>
+                    <th>Responsável</th>
+                    <th>Dias Aberta / Meta</th>
+                    <th>Status Vaga</th>
+                    <th>Candidatos</th>
+                    <th>Distribuição de SLA</th>
+                    <th>% Conformidade</th>
+                    <th class="text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${jobSlaStats.map(j => `
+                    <tr class="sla-vaga-table-row" data-job-id="${j.jobId}" data-risk="${j.riskStatus}" data-search="${(j.jobId + ' ' + j.title + ' ' + j.department + ' ' + j.businessUnit + ' ' + j.candidates.map(c => c.name).join(' ')).toLowerCase()}">
+                      <td>
+                        <span class="cell-main" style="font-family: var(--font-code); color: var(--navy); font-weight: 700;">${j.jobId}</span>
+                      </td>
+                      <td>
+                        <div class="cell-main" style="font-weight: 700;">${j.title}</div>
+                        <div class="cell-sub">${j.businessUnit} • ${j.department}</div>
+                      </td>
+                      <td>
+                        <div class="cell-main">${j.recruiterEmail !== 'Não atribuída' ? j.recruiterEmail : '<em style="color: var(--muted)">Pendente</em>'}</div>
+                        <div class="cell-sub">BP: ${j.bpEmail || '--'}</div>
+                      </td>
+                      <td>
+                        <span class="cell-main" style="font-family: var(--font-code); font-weight: 700;">
+                          ${j.daysOpen}d <span style="font-weight: normal; color: var(--muted); font-size: 0.75rem;">/ meta ${j.jobTotalSlaDays}d</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral">${j.status}</span>
+                      </td>
+                      <td>
+                        <span class="badge ${j.totalApps > 0 ? 'badge-neutral' : ''}" style="font-weight: 700;">
+                          ${j.totalApps} ativo(s)
+                        </span>
+                      </td>
+                      <td>
+                        <div class="sla-pills-row">
+                          <span class="sla-pill pill-ok" title="Candidatos no Prazo">✓ ${j.noPrazo}</span>
+                          <span class="sla-pill pill-warn" title="Candidatos em Atenção">⏳ ${j.atencao}</span>
+                          <span class="sla-pill pill-danger" title="Candidatos com SLA Estourado">✕ ${j.estourado}</span>
+                        </div>
+                      </td>
+                      <td style="min-width: 130px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; font-weight: 700; margin-bottom: 3px;">
+                          <span>${j.conformityPct}%</span>
+                        </div>
+                        <div class="sla-stage-progress-track">
+                          <div class="sla-stage-progress-fill" style="width: ${j.conformityPct}%; background: ${j.conformityPct >= 80 ? 'var(--pos)' : j.conformityPct >= 60 ? 'var(--gold)' : 'var(--neg)'};"></div>
+                        </div>
+                      </td>
+                      <td class="text-right">
+                        <button class="btn btn-secondary btn-sm btn-toggle-job-candidates" data-job-id="${j.jobId}" data-count="${j.totalApps}" type="button" style="white-space: nowrap;">
+                          ▼ Ver Candidatos (${j.totalApps})
+                        </button>
+                      </td>
+                    </tr>
+                    <!-- Linha Expansível com Detalhes dos Candidatos -->
+                    <tr class="sla-vaga-expansion-row" id="expansion-job-${j.jobId}" style="display: none;">
+                      <td colspan="9" style="padding: 0;">
+                        <div class="sla-candidates-expansion">
+                          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="font-weight: 700; font-size: 0.85rem; color: var(--navy); display: flex; align-items: center; gap: 6px;">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                              Candidatos Vinculados à Vaga ${j.jobId}: ${j.title} (${j.candidates.length})
+                            </div>
+                            <span class="cell-sub">Cumprimento de SLA na etapa atual de cada candidato</span>
+                          </div>
+
+                          ${j.candidates.length === 0 ? `
+                            <div style="text-align: center; padding: 18px; color: var(--muted); font-size: 0.82rem;">
+                              Nenhum candidato em andamento nesta vaga no momento.
+                            </div>
+                          ` : `
+                            <div class="sla-candidates-grid">
+                              ${j.candidates.map(cand => `
+                                <div class="sla-candidate-card ${cand.slaBadgeClass}">
+                                  <div class="sla-candidate-card-header">
+                                    <div>
+                                      <div class="sla-candidate-card-name">${cand.name}</div>
+                                      <div class="sla-candidate-card-meta">
+                                        <span>${cand.email || 'Sem e-mail'}</span>
+                                        ${cand.phone ? `• <span>${cand.phone}</span>` : ''}
+                                        • <span>Canal: ${cand.source}</span>
+                                      </div>
+                                    </div>
+                                    <span class="badge ${cand.slaBadgeClass}">
+                                      ${cand.slaCode === 'NO_PRAZO' ? 'No Prazo' : cand.slaCode === 'ATENCAO' ? 'Atenção' : 'Estourado'}
+                                    </span>
+                                  </div>
+
+                                  <div style="margin-top: 6px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="color: var(--text-secondary); font-weight: 500;">Etapa Atual:</span>
+                                    <span class="badge badge-neutral" style="font-weight: 600;">${cand.currentStage}</span>
+                                  </div>
+
+                                  <div class="sla-candidate-card-timer">
+                                    <span style="font-family: var(--font-code); font-weight: 700; color: ${cand.slaCode === 'ESTOURADO' ? 'var(--coral)' : cand.slaCode === 'ATENCAO' ? 'var(--amber)' : 'var(--emerald)'};">
+                                      ⏱️ ${cand.daysInStage} de ${cand.slaLimit} dias limite
+                                    </span>
+                                    <span class="cell-sub" style="font-size: 0.72rem;">
+                                      ${cand.slaCode === 'ESTOURADO' ? `<strong style="color: var(--coral);">+${cand.overdueDays}d atrasado</strong>` : `Restam ${cand.remainingDays}d`}
+                                    </span>
+                                  </div>
+                                </div>
+                              `).join('')}
+                            </div>
+                          `}
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -1031,6 +1584,48 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
       }
     };
   });
+
+  // Bind dos botões de expansão de candidatos nas vagas
+  container.querySelectorAll('.btn-toggle-job-candidates').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const jobId = btn.getAttribute('data-job-id');
+      const count = btn.getAttribute('data-count') || '0';
+      const expRow = document.getElementById(`expansion-job-${jobId}`);
+      if (expRow) {
+        const isHidden = expRow.style.display === 'none';
+        expRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.textContent = isHidden ? `▲ Ocultar Candidatos` : `▼ Ver Candidatos (${count})`;
+      }
+    };
+  });
+
+  // Filtro dinâmico e busca instantânea na tabela de SLA de Vagas
+  const searchInput = document.getElementById('sla-jobs-search-input');
+  const riskSelect = document.getElementById('sla-jobs-risk-select');
+  const applySlaVagasFilter = () => {
+    const q = (searchInput?.value || '').toLowerCase().trim();
+    const risk = riskSelect?.value || '';
+
+    container.querySelectorAll('.sla-vaga-table-row').forEach(row => {
+      const rowSearch = row.getAttribute('data-search') || '';
+      const rowRisk = row.getAttribute('data-risk') || '';
+      const jobId = row.getAttribute('data-job-id');
+      const expRow = document.getElementById(`expansion-job-${jobId}`);
+
+      const matchQ = !q || rowSearch.includes(q);
+      const matchRisk = !risk || rowRisk === risk;
+
+      const visible = matchQ && matchRisk;
+      row.style.display = visible ? '' : 'none';
+      if (!visible && expRow) {
+        expRow.style.display = 'none';
+      }
+    });
+  };
+
+  if (searchInput) searchInput.oninput = applySlaVagasFilter;
+  if (riskSelect) riskSelect.onchange = applySlaVagasFilter;
 
   // ---------------------------------------------------------------------------
   // Inicialização dos Gráficos Chart.js após inserção no DOM
@@ -1060,7 +1655,10 @@ export function renderIndicatorsModule(jobs, applications, admissions = null) {
     chamadoDpOkCount,
     glpiOkCount,
     glpiEmAtendCount,
-    matriculaOkCount
+    matriculaOkCount,
+    // SLA charts params
+    stageSlaStats,
+    jobSlaStats
   });
 }
 
@@ -1089,7 +1687,10 @@ function initCharts({
   chamadoDpOkCount,
   glpiOkCount,
   glpiEmAtendCount,
-  matriculaOkCount
+  matriculaOkCount,
+  // SLA params
+  stageSlaStats,
+  jobSlaStats
 }) {
   // ---------------------------------------------------------------------------
   // Gráficos de Admissão & Onboarding
@@ -1557,6 +2158,133 @@ function initCharts({
         scales: {
           y: { beginAtZero: true, ticks: { precision: 0, font: { family: 'Inter' } }, grid: { color: '#f1f5f9' } },
           x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gráficos de Governança de SLA (Etapas e Vagas)
+  // ---------------------------------------------------------------------------
+
+  // SLA 1: Distribuição de SLA por Etapa (Stacked Bar)
+  const ctxStageSla = document.getElementById('chart-stage-sla-stacked')?.getContext('2d');
+  if (ctxStageSla && stageSlaStats) {
+    activeChartInstances['stageSlaStacked'] = new Chart(ctxStageSla, {
+      type: 'bar',
+      data: {
+        labels: stageSlaStats.map(s => s.shortName || s.stageName),
+        datasets: [
+          {
+            label: 'No Prazo',
+            data: stageSlaStats.map(s => s.noPrazo),
+            backgroundColor: '#10B981',
+            borderRadius: 4
+          },
+          {
+            label: 'Em Atenção',
+            data: stageSlaStats.map(s => s.atencao),
+            backgroundColor: '#F59E0B',
+            borderRadius: 4
+          },
+          {
+            label: 'SLA Estourado',
+            data: stageSlaStats.map(s => s.estourado),
+            backgroundColor: '#EF4444',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, padding: 12 } }
+        },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Inter', size: 10, weight: '500' } } },
+          y: { stacked: true, beginAtZero: true, ticks: { precision: 0, font: { family: 'Inter' } }, grid: { color: '#f1f5f9' } }
+        }
+      }
+    });
+  }
+
+  // SLA 2: Tempo Médio Real vs Meta Oficial de SLA por Etapa (Grouped Bar)
+  const ctxStageTime = document.getElementById('chart-stage-time-vs-sla')?.getContext('2d');
+  if (ctxStageTime && stageSlaStats) {
+    const validStages = stageSlaStats.filter(s => s.slaLimit > 0);
+    activeChartInstances['stageTimeVsSla'] = new Chart(ctxStageTime, {
+      type: 'bar',
+      data: {
+        labels: validStages.map(s => s.shortName || s.stageName),
+        datasets: [
+          {
+            label: 'Tempo Médio Real (dias)',
+            data: validStages.map(s => s.avgDaysReal),
+            backgroundColor: '#38bdf8',
+            borderRadius: 4
+          },
+          {
+            label: 'Meta Limite SLA (dias)',
+            data: validStages.map(s => s.slaLimit),
+            backgroundColor: '#00147D',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, padding: 12 } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10, weight: '500' } } },
+          y: { beginAtZero: true, ticks: { precision: 0, font: { family: 'Inter' } }, grid: { color: '#f1f5f9' } }
+        }
+      }
+    });
+  }
+
+  // SLA 3: Conformidade de Candidatos por Vaga (Top Posições)
+  const ctxJobsSla = document.getElementById('chart-jobs-sla-bar')?.getContext('2d');
+  if (ctxJobsSla && jobSlaStats && jobSlaStats.length > 0) {
+    const topJobs = jobSlaStats.slice(0, 8);
+    activeChartInstances['jobsSla'] = new Chart(ctxJobsSla, {
+      type: 'bar',
+      data: {
+        labels: topJobs.map(j => `${j.jobId} - ${j.title.length > 18 ? j.title.substring(0, 16) + '...' : j.title}`),
+        datasets: [
+          {
+            label: 'No Prazo',
+            data: topJobs.map(j => j.noPrazo),
+            backgroundColor: '#10B981',
+            borderRadius: 4
+          },
+          {
+            label: 'Em Atenção',
+            data: topJobs.map(j => j.atencao),
+            backgroundColor: '#F59E0B',
+            borderRadius: 4
+          },
+          {
+            label: 'SLA Estourado',
+            data: topJobs.map(j => j.estourado),
+            backgroundColor: '#EF4444',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, padding: 12 } }
+        },
+        scales: {
+          x: { stacked: true, beginAtZero: true, ticks: { precision: 0, font: { family: 'Inter' } }, grid: { color: '#f1f5f9' } },
+          y: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Inter', size: 10, weight: '500' } } }
         }
       }
     });

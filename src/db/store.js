@@ -46,6 +46,7 @@ class DataStore {
     this.candidates = [];
     this.applications = [];
     this.stageHistory = [];
+    this.candidateHistory = [];
     this.jobHistory = [];
     this.admissions = [];
     this.admissionStageHistory = [];
@@ -64,6 +65,7 @@ class DataStore {
         this.candidates = parsed.candidates || [];
         this.applications = parsed.applications || [];
         this.stageHistory = parsed.stageHistory || [];
+        this.candidateHistory = parsed.candidateHistory || [];
         this.jobHistory = parsed.jobHistory || [];
         this.admissions = (parsed.admissions && parsed.admissions.length > 0) 
           ? parsed.admissions 
@@ -87,6 +89,7 @@ class DataStore {
     this.candidates = JSON.parse(JSON.stringify(INITIAL_CANDIDATES));
     this.applications = JSON.parse(JSON.stringify(INITIAL_APPLICATIONS));
     this.stageHistory = JSON.parse(JSON.stringify(INITIAL_STAGE_HISTORY));
+    this.candidateHistory = [];
     this.jobHistory = JSON.parse(JSON.stringify(INITIAL_JOB_HISTORY));
     this.admissions = JSON.parse(JSON.stringify(INITIAL_ADMISSIONS));
     this.admissionStageHistory = JSON.parse(JSON.stringify(INITIAL_ADMISSION_STAGE_HISTORY));
@@ -104,6 +107,7 @@ class DataStore {
         candidates: this.candidates,
         applications: this.applications,
         stageHistory: this.stageHistory,
+        candidateHistory: this.candidateHistory,
         jobHistory: this.jobHistory,
         admissions: this.admissions,
         admissionStageHistory: this.admissionStageHistory
@@ -116,11 +120,12 @@ class DataStore {
   async loadFromSupabase() {
     if (!isSupabaseConfigured()) return;
     try {
-      const [jobs, candidates, applications, stageHistory, jobHistory, admissions, admissionStageHistory] = await Promise.all([
+      const [jobs, candidates, applications, stageHistory, candidateHistory, jobHistory, admissions, admissionStageHistory] = await Promise.all([
         supabaseService.getJobs(),
         supabaseService.getCandidates(),
         supabaseService.getApplications(),
         supabaseService.getAllStageHistory(),
+        supabaseService.getAllCandidateHistory ? supabaseService.getAllCandidateHistory() : [],
         supabaseService.getAllJobHistory(),
         supabaseService.getAdmissions ? supabaseService.getAdmissions() : [],
         supabaseService.getAllAdmissionStageHistory ? supabaseService.getAllAdmissionStageHistory() : []
@@ -130,6 +135,7 @@ class DataStore {
       if (candidates && candidates.length > 0) this.candidates = candidates;
       if (applications && applications.length > 0) this.applications = applications;
       if (stageHistory && stageHistory.length > 0) this.stageHistory = stageHistory;
+      if (candidateHistory && candidateHistory.length > 0) this.candidateHistory = candidateHistory;
       if (jobHistory && jobHistory.length > 0) this.jobHistory = jobHistory;
       if (admissions && admissions.length > 0) this.admissions = admissions;
       if (admissionStageHistory && admissionStageHistory.length > 0) this.admissionStageHistory = admissionStageHistory;
@@ -182,6 +188,28 @@ class DataStore {
     this.save();
   }
 
+  syncAdmission(admission) {
+    if (!admission) return;
+    const idx = this.admissions.findIndex(a => a.id === admission.id);
+    if (idx >= 0) {
+      this.admissions[idx] = { ...this.admissions[idx], ...admission };
+    } else {
+      this.admissions.unshift(admission);
+    }
+    this.save();
+  }
+
+  syncAdmissionHistoryRecord(record) {
+    if (!record) return;
+    const idx = this.admissionStageHistory.findIndex(h => h.id === record.id);
+    if (idx >= 0) {
+      this.admissionStageHistory[idx] = { ...this.admissionStageHistory[idx], ...record };
+    } else {
+      this.admissionStageHistory.unshift(record);
+    }
+    this.save();
+  }
+
 
   // ---------------------------------------------------------------------------
   // Jobs API
@@ -209,6 +237,10 @@ class DataStore {
       department: jobData.department,
       hiring_manager: jobData.hiring_manager || null,
       headcount_type: jobData.headcount_type || 'Substituição',
+      replaced_employee: jobData.replaced_employee || null,
+      location_associada: jobData.location_associada || jobData.business_unit || null,
+      location_city: jobData.location_city || null,
+      location_state: jobData.location_state || null,
       selection_type: jobData.selection_type,
       work_model: jobData.work_model || 'Presencial',
       positions_count: (jobData.positions_count && Number(jobData.positions_count) > 0) ? Number(jobData.positions_count) : 1,
@@ -329,6 +361,7 @@ class DataStore {
       phone: candData.phone || '',
       source: candData.source,
       gender: candData.gender || 'Não informado',
+      salary_expectation: (candData.salary_expectation !== undefined && candData.salary_expectation !== null && candData.salary_expectation !== '') ? Number(candData.salary_expectation) : null,
       linkedin: candData.linkedin || '',
       comment: candData.comment || '',
       resume_url: candData.resume_url || null,
@@ -341,7 +374,7 @@ class DataStore {
     return { candidate: newCandidate, created: true };
   }
 
-  updateCandidate(candidateId, updates) {
+  updateCandidate(candidateId, updates, auditMeta = {}) {
     const idx = this.candidates.findIndex(c => c.id === candidateId || (updates.originalEmail && c.email === updates.originalEmail));
     if (idx === -1) return null;
 
@@ -355,6 +388,7 @@ class DataStore {
       phone: updates.phone !== undefined ? updates.phone : oldCand.phone,
       source: updates.source !== undefined ? updates.source : oldCand.source,
       gender: updates.gender !== undefined ? updates.gender : (oldCand.gender || 'Não informado'),
+      salary_expectation: updates.salary_expectation !== undefined ? (updates.salary_expectation !== '' && updates.salary_expectation !== null ? Number(updates.salary_expectation) : null) : oldCand.salary_expectation,
       linkedin: updates.linkedin !== undefined ? updates.linkedin : oldCand.linkedin,
       comment: updates.comment !== undefined ? updates.comment : oldCand.comment,
       resume_url: updates.resume_url !== undefined ? updates.resume_url : oldCand.resume_url,
@@ -362,6 +396,18 @@ class DataStore {
     };
 
     const updatedCand = this.candidates[idx];
+
+    // Registrar histórico cadastral se auditMeta fornecido
+    if (auditMeta && auditMeta.description) {
+      this.addCandidateHistoryRecord({
+        candidate_id: updatedCand.id,
+        action: auditMeta.action || 'ATUALIZACAO_CADASTRAL',
+        description: auditMeta.description,
+        changed_fields: auditMeta.changed_fields || null,
+        changed_by: auditMeta.changed_by || 'Sistema',
+        changed_at: new Date().toISOString()
+      });
+    }
 
     // Sync candidate reference in applications list
     this.applications.forEach(app => {
@@ -507,6 +553,41 @@ class DataStore {
       .sort((a, b) => new Date(b.moved_at) - new Date(a.moved_at));
   }
 
+  // INSERT-Only to candidate_history
+  addCandidateHistoryRecord(record) {
+    const newRecord = {
+      id: record.id || `cand-hist-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      candidate_id: record.candidate_id,
+      action: record.action || 'ATUALIZACAO_CADASTRAL',
+      description: record.description || '',
+      changed_fields: record.changed_fields || null,
+      changed_by: record.changed_by || (this.state && this.state.currentPersona ? this.state.currentPersona.email : 'Sistema'),
+      changed_at: record.changed_at || new Date().toISOString()
+    };
+
+    this.candidateHistory.unshift(newRecord);
+    this.save();
+    return newRecord;
+  }
+
+  syncCandidateHistoryRecord(record) {
+    if (!record) return;
+    const exists = this.candidateHistory.some(h => h.id === record.id);
+    if (!exists) {
+      this.candidateHistory.unshift(record);
+      this.save();
+    }
+  }
+
+  getCandidateCadastralHistory(candidateIdOrEmail) {
+    const cand = this.candidates.find(c => c.id === candidateIdOrEmail || c.email === candidateIdOrEmail);
+    if (!cand) return [];
+
+    return this.candidateHistory
+      .filter(h => h.candidate_id === cand.id)
+      .sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
+  }
+
   getCandidateHistory(candidateIdOrEmail) {
     const cand = this.candidates.find(c => c.id === candidateIdOrEmail || c.email === candidateIdOrEmail);
     if (!cand) return [];
@@ -517,6 +598,32 @@ class DataStore {
     return this.stageHistory
       .filter(h => appIds.has(h.application_id))
       .sort((a, b) => new Date(b.moved_at) - new Date(a.moved_at));
+  }
+
+  getCandidateUnifiedHistory(candidateIdOrEmail) {
+    const cand = this.candidates.find(c => c.id === candidateIdOrEmail || c.email === candidateIdOrEmail);
+    if (!cand) return [];
+
+    const candApps = this.applications.filter(a => a.candidate_id === cand.id || (a.candidate && a.candidate.email === cand.email));
+    const appIds = new Set(candApps.map(a => a.id));
+
+    const stageItems = this.stageHistory
+      .filter(h => appIds.has(h.application_id))
+      .map(h => ({
+        ...h,
+        _type: 'STAGE_MOVE',
+        _timestamp: new Date(h.moved_at).getTime()
+      }));
+
+    const cadastralItems = this.candidateHistory
+      .filter(h => h.candidate_id === cand.id)
+      .map(h => ({
+        ...h,
+        _type: 'CADASTRAL',
+        _timestamp: new Date(h.changed_at).getTime()
+      }));
+
+    return [...stageItems, ...cadastralItems].sort((a, b) => b._timestamp - a._timestamp);
   }
 
   syncStageHistoryRecord(record) {

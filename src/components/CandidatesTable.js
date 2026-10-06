@@ -29,8 +29,9 @@ export function renderCandidatesTable(applications, onMoveClick, onHistoryClick,
         <td>
           <div class="cell-main">${cand ? cand.full_name : 'N/A'}</div>
           <div class="cell-sub">${cand ? cand.email : ''}</div>
-          <div style="margin-top: 2px;">
+          <div style="margin-top: 2px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
             <span class="badge badge-neutral" style="font-size: 0.7rem;">${cand && cand.gender ? cand.gender : 'Não informado'}</span>
+            ${cand && cand.salary_expectation ? `<span class="badge badge-neutral" style="font-size: 0.7rem; background: #f0f9ff; color: #0369a1; border-color: #bae6fd;">💰 R$ ${Number(cand.salary_expectation).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>` : ''}
           </div>
           ${cand && (cand.resume_url || cand.resume_name) ? `
             <div style="margin-top: 4px;">

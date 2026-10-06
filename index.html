@@ -365,6 +365,11 @@
                 </select>
               </div>
 
+              <div class="form-group span-2" id="job-replaced-employee-wrap" style="display: none;">
+                <label for="job-replaced-employee">Nome do Funcionário Substituído</label>
+                <input type="text" id="job-replaced-employee" placeholder="Nome completo do colaborador substituído" />
+              </div>
+
               <div class="form-group">
                 <label for="job-selection-type" class="required">Tipo de Seleção / Canal</label>
                 <select id="job-selection-type" required>
@@ -387,6 +392,38 @@
               <div class="form-group">
                 <label for="job-hiring-manager">Gestor Solicitante (Referência)</label>
                 <input type="text" id="job-hiring-manager" placeholder="Nome do gestor da vaga" />
+              </div>
+
+              <div class="form-group span-2 allocation-section">
+                <div class="allocation-section-header">
+                  <div class="allocation-section-title-wrap">
+                    <div class="allocation-section-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                      <h4 class="allocation-section-heading">Alocação da Vaga (Onde fica alocado)</h4>
+                      <p class="allocation-section-sub">Informe a associada, cidade e estado onde o profissional atuará.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="allocation-grid">
+                  <div class="form-group">
+                    <label for="job-location-associada">Associada</label>
+                    <select id="job-location-associada">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="job-location-city">Cidade</label>
+                    <input type="text" id="job-location-city" placeholder="Ex: Cuiabá, Londrina, Campinas" />
+                  </div>
+                  <div class="form-group">
+                    <label for="job-location-state">Estado (UF)</label>
+                    <select id="job-location-state">
+                      <!-- Populated dynamically with BRAZILIAN_STATES -->
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div class="form-group span-2 sla-config-section">
@@ -526,7 +563,7 @@
                 <input type="tel" id="cand-phone" placeholder="(11) 98888-7777" />
               </div>
 
-              <div class="form-group span-2">
+              <div class="form-group">
                 <label for="cand-source" class="required">Canal de Origem / Captação</label>
                 <select id="cand-source" required>
                   <option value="LinkedIn">LinkedIn</option>
@@ -536,6 +573,11 @@
                   <option value="Consultoria">Consultoria Externa</option>
                   <option value="Mov. Interna">Movimentação Interna</option>
                 </select>
+              </div>
+
+              <div class="form-group">
+                <label for="cand-salary-expectation">Pretensão Salarial (R$)</label>
+                <input type="number" id="cand-salary-expectation" step="100" min="0" placeholder="Ex: 5000" />
               </div>
 
               <div class="form-group span-2">
@@ -831,6 +873,11 @@
               </div>
 
               <div class="form-group">
+                <label for="edit-cand-salary-expectation">Pretensão Salarial (R$)</label>
+                <input type="number" id="edit-cand-salary-expectation" step="100" min="0" placeholder="Ex: 5000" />
+              </div>
+
+              <div class="form-group">
                 <label for="edit-cand-source" class="required">Canal de Origem</label>
                 <select id="edit-cand-source" required>
                   <option value="LinkedIn">LinkedIn</option>
@@ -910,6 +957,11 @@
                 <select id="edit-job-headcount-type"></select>
               </div>
 
+              <div class="form-group span-2" id="edit-job-replaced-employee-wrap" style="display: none;">
+                <label for="edit-job-replaced-employee">Nome do Funcionário Substituído</label>
+                <input type="text" id="edit-job-replaced-employee" placeholder="Nome completo do colaborador substituído" />
+              </div>
+
               <div class="form-group">
                 <label for="edit-job-selection-type" class="required">Tipo de Seleção</label>
                 <select id="edit-job-selection-type" required></select>
@@ -923,6 +975,34 @@
               <div class="form-group">
                 <label for="edit-job-positions-count" class="required">Qtd. de Posições / Vagas</label>
                 <input type="number" id="edit-job-positions-count" min="1" max="100" required />
+              </div>
+
+              <div class="form-group span-2 allocation-section">
+                <div class="allocation-section-header">
+                  <div class="allocation-section-title-wrap">
+                    <div class="allocation-section-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                      <h4 class="allocation-section-heading">Alocação da Vaga (Onde fica alocado)</h4>
+                      <p class="allocation-section-sub">Informe a associada, cidade e estado onde o profissional atuará.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="allocation-grid">
+                  <div class="form-group">
+                    <label for="edit-job-location-associada">Associada</label>
+                    <select id="edit-job-location-associada"></select>
+                  </div>
+                  <div class="form-group">
+                    <label for="edit-job-location-city">Cidade</label>
+                    <input type="text" id="edit-job-location-city" placeholder="Ex: Cuiabá, Londrina, Campinas" />
+                  </div>
+                  <div class="form-group">
+                    <label for="edit-job-location-state">Estado (UF)</label>
+                    <select id="edit-job-location-state"></select>
+                  </div>
+                </div>
               </div>
 
               <div class="form-group span-2 sla-config-section">
@@ -1355,24 +1435,43 @@
               </div>
             </div>
 
-            <!-- Etapa 6: E-mail de Confirmação -->
+            <!-- Etapa 6: E-mail de Confirmação ao Gestor -->
             <div class="admission-step-card" data-step="6">
               <div class="step-card-header">
                 <div class="step-card-title">
                   <span class="step-number">6</span>
-                  <span>E-mail de Confirmação</span>
+                  <span>E-mail de Confirmação ao Gestor</span>
                 </div>
                 <span class="badge" id="step6-status-badge">Pendente</span>
               </div>
               <div class="step-card-body">
-                <div class="checklist-items-row">
+                <div class="checklist-items-row" style="margin-bottom: 8px;">
                   <label class="checkbox-inline">
                     <input type="checkbox" id="chk-email-confirmacao" />
-                    <span>E-mail de Boas-Vindas e Orientações do 1º Dia Enviado</span>
+                    <span style="font-weight: 600;">E-mail de Confirmação Enviado ao Gestor</span>
                   </label>
                 </div>
-                <div style="margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
-                  Instruções de horário, local de apresentação ou link da integração virtual e boas-vindas oficiais.
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-subtle, #e2e8f0);">
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="checkbox-inline" style="font-size: 0.8rem;">
+                      <input type="checkbox" id="chk-email-aceite" />
+                      <span>Aceite da Proposta Confirmado</span>
+                    </label>
+                    <label class="checkbox-inline" style="font-size: 0.8rem;">
+                      <input type="checkbox" id="chk-email-form-acessos" />
+                      <span>Formulário de Acessos Enviado</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label style="font-size: 0.75rem; color: var(--muted, #64748b); font-weight: 600; display: block; margin-bottom: 3px;">Previsão de Data de Início</label>
+                    <input type="date" id="input-email-previsao-inicio" class="form-input-sm" style="width: 100%;" />
+                  </div>
+                </div>
+
+                <div style="margin-top: 8px; padding: 8px 12px; background: rgba(80, 186, 236, 0.08); border-left: 3px solid var(--plx-accent, #50baec); border-radius: 4px; font-size: 0.77rem; color: var(--text-primary, #1e1e1e); line-height: 1.45;">
+                  ℹ️ <b>Regra de Processo:</b> Este e-mail é enviado ao <b>Gestor da Vaga</b> confirmando o aceite da proposta, informando a data prevista de início e disponibilizando o formulário para requisição de acessos.<br>
+                  <span style="color: var(--muted, #64748b); font-weight: 500;">* O e-mail oficial de <b>Boas-Vindas</b> e orientações de primeiro dia ao novo colaborador é de responsabilidade da <b>BP (Business Partner)</b>.</span>
                 </div>
               </div>
             </div>
@@ -1393,7 +1492,7 @@
                     <input type="text" id="input-glpi-ticket" class="form-input-sm" placeholder="Ex: GLPI-84910" />
                   </div>
                   <div>
-                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status GLPI</label>
+                    <label style="font-size: 0.75rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status GLPI Geral</label>
                     <select id="sel-glpi-status" class="form-select-sm" style="width: 100%;">
                       <option value="Pendente">Pendente</option>
                       <option value="Aberto">Aberto</option>
@@ -1402,23 +1501,45 @@
                     </select>
                   </div>
                 </div>
-                <div class="checklist-items-row">
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="chk-glpi-notebook" />
-                    <span>Notebook / Equipamento</span>
-                  </label>
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="chk-glpi-email" />
-                    <span>E-mail Corporativo (@plurix.com.br)</span>
-                  </label>
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="chk-glpi-vpn" />
-                    <span>VPN / Acessos de Rede</span>
-                  </label>
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="chk-glpi-cracha" />
-                    <span>Crachá / Acesso Predial</span>
-                  </label>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+                  <!-- Bloco Equipamentos -->
+                  <div style="padding: 10px; background: #f8fafc; border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-sm, 6px);">
+                    <div style="margin-bottom: 6px;">
+                      <label class="checkbox-inline" style="font-size: 0.82rem; font-weight: 600;">
+                        <input type="checkbox" id="chk-glpi-equipamentos" />
+                        <span>Equipamentos</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label style="font-size: 0.73rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status Equipamento</label>
+                      <select id="sel-glpi-status-equipamento" class="form-select-sm" style="width: 100%;">
+                        <option value="Pendente">Pendente</option>
+                        <option value="Aberto">Aberto</option>
+                        <option value="Em Atendimento">Em Atendimento</option>
+                        <option value="Concluído">Concluído</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Bloco Acessos -->
+                  <div style="padding: 10px; background: #f8fafc; border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-sm, 6px);">
+                    <div style="margin-bottom: 6px;">
+                      <label class="checkbox-inline" style="font-size: 0.82rem; font-weight: 600;">
+                        <input type="checkbox" id="chk-glpi-acessos" />
+                        <span>Acessos</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label style="font-size: 0.73rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">Status Acesso</label>
+                      <select id="sel-glpi-status-acesso" class="form-select-sm" style="width: 100%;">
+                        <option value="Pendente">Pendente</option>
+                        <option value="Aberto">Aberto</option>
+                        <option value="Em Atendimento">Em Atendimento</option>
+                        <option value="Concluído">Concluído</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1433,11 +1554,15 @@
                 <span class="badge" id="step8-status-badge">Pendente</span>
               </div>
               <div class="step-card-body">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: center;">
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label class="checkbox-inline">
                       <input type="checkbox" id="chk-planilha-inserida" />
                       <span>Inserido na Planilha Mestre de Admissão</span>
+                    </label>
+                    <label class="checkbox-inline">
+                      <input type="checkbox" id="chk-informe-bp" />
+                      <span>Informe para BP de novo candidato</span>
                     </label>
                   </div>
                   <div>

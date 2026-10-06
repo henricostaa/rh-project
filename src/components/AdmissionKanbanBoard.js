@@ -39,11 +39,11 @@ export function getAdmissionChecklistProgress(checklist = {}) {
   if (checklist.email_confirmacao_enviado) completed++;
 
   // 7. Acessos GLPI
-  if (checklist.glpi_status === 'Concluído') completed++;
-  else if (checklist.glpi_ticket_numero) completed += 0.5;
+  if (checklist.glpi_status === 'Concluído' || (checklist.glpi_status_equipamento === 'Concluído' && checklist.glpi_status_acesso === 'Concluído')) completed++;
+  else if (checklist.glpi_ticket_numero || checklist.glpi_status === 'Em Atendimento' || checklist.glpi_status_equipamento === 'Em Atendimento' || checklist.glpi_status_acesso === 'Em Atendimento') completed += 0.5;
 
   // 8. Planilha Admissão
-  if (checklist.planilha_inserida || checklist.matricula_gerada) completed++;
+  if (checklist.planilha_inserida || checklist.informe_bp_novo_candidato || checklist.matricula_gerada) completed++;
 
   const rounded = Math.min(8, Math.round(completed * 10) / 10);
   const percentage = Math.min(100, Math.round((rounded / total) * 100));
@@ -69,7 +69,10 @@ export function renderAdmissionKanbanBoard(
 
   container.innerHTML = ADMISSION_STAGES.map(stageObj => {
     const stageName = stageObj.name;
-    const stageAdmissions = admissions.filter(a => a.current_stage === stageName);
+    const stageAdmissions = admissions.filter(a => {
+      return a.current_stage === stageName ||
+             (stageObj.key === 'email_confirmacao' && (a.current_stage === 'E-mail de Confirmação' || a.current_stage === 'E-mail de Confirmação ao Gestor'));
+    });
 
     return `
       <div class="kanban-column admission-column" data-stage="${stageName}">
@@ -163,6 +166,11 @@ export function renderAdmissionKanbanBoard(
                   ${adm.checklist && adm.checklist.matricula_gerada ? `
                     <span class="badge badge-neutral" style="background: #faf5ff; color: #7e22ce; border-color: #e9d5ff;" title="Matrícula de Colaborador">
                       🏷️ Matrícula: ${adm.checklist.matricula_gerada}
+                    </span>
+                  ` : ''}
+                  ${adm.checklist && adm.checklist.informe_bp_novo_candidato ? `
+                    <span class="badge badge-neutral" style="background: #f0fdf4; color: #166534; border-color: #bbf7d0;" title="Informe para BP de Novo Candidato Realizado">
+                      📋 BP Informada
                     </span>
                   ` : ''}
                 </div>

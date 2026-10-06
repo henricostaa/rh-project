@@ -102,9 +102,38 @@ export const TAXONOMY = {
     'Reprovado Gestão',
     'Declinio',
     'Standy by',
-    'Banco de Talentos'
   ]
 };
+
+export const BRAZILIAN_STATES = [
+  { uf: 'AC', name: 'Acre' },
+  { uf: 'AL', name: 'Alagoas' },
+  { uf: 'AP', name: 'Amapá' },
+  { uf: 'AM', name: 'Amazonas' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'CE', name: 'Ceará' },
+  { uf: 'DF', name: 'Distrito Federal' },
+  { uf: 'ES', name: 'Espírito Santo' },
+  { uf: 'GO', name: 'Goiás' },
+  { uf: 'MA', name: 'Maranhão' },
+  { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Pará' },
+  { uf: 'PB', name: 'Paraíba' },
+  { uf: 'PR', name: 'Paraná' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'PI', name: 'Piauí' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'RO', name: 'Rondônia' },
+  { uf: 'RR', name: 'Roraima' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'São Paulo' },
+  { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' }
+];
 
 // Matriz de SLAs da Empresa (Conforme Tabela e Fluxo de Recrutamento)
 export const ROLE_LEVEL_SLA_MAP = {
@@ -471,11 +500,11 @@ export const ADMISSION_STAGES = [
   {
     step: 6,
     key: 'email_confirmacao',
-    name: 'E-mail de Confirmação',
-    shortName: 'E-mail de Confirmação',
+    name: 'E-mail de Confirmação ao Gestor',
+    shortName: 'E-mail ao Gestor',
     defaultDays: 1,
     icon: 'mail',
-    description: 'Envio de e-mail de confirmação ao novo colaborador com orientações de primeiro dia, local, horário e boas-vindas.'
+    description: 'Envio de e-mail ao gestor confirmando o aceite da proposta, informando previsão de data de início e formulário de acessos. (O e-mail de boas-vindas ao colaborador é responsabilidade da BP).'
   },
   {
     step: 7,
@@ -484,7 +513,7 @@ export const ADMISSION_STAGES = [
     shortName: 'Acessos GLPI (TI)',
     defaultDays: 2,
     icon: 'monitor',
-    description: 'Abertura de chamado GLPI para TI (disponibilização de notebook, e-mail corporativo, crachá e acessos a sistemas).'
+    description: 'Abertura de chamado GLPI para TI (disponibilização de equipamentos e acessos a sistemas).'
   },
   {
     step: 8,
@@ -514,6 +543,7 @@ export const DEFAULT_ADMISSION_SLAS = {
   'Abertura Chamado Exame Admissão': 2,
   'Carta de Banco (Opcional)': 1,
   'Chamado de Admissão': 2,
+  'E-mail de Confirmação ao Gestor': 1,
   'E-mail de Confirmação': 1,
   'Formulário de Acessos GLPI': 2,
   'Inserir Dados Planilha Admissão': 1,
@@ -558,21 +588,27 @@ export const INITIAL_ADMISSION_CHECKLIST = {
   chamado_dp_responsavel: '',
   chamado_dp_status: 'Pendente', // 'Pendente', 'Aberto', 'Concluído'
 
-  // 6. E-mail de Confirmação
+  // 6. E-mail de Confirmação ao Gestor
   email_confirmacao_enviado: false,
   email_confirmacao_data: null,
+  email_confirmacao_aceite: false,
+  email_confirmacao_form_acessos: false,
+  email_confirmacao_previsao_inicio: '',
 
   // 7. Formulário GLPI
   glpi_ticket_numero: '',
+  glpi_solicitado_equipamentos: true,
+  glpi_solicitado_acessos: true,
   glpi_solicitado_notebook: true,
   glpi_solicitado_email: true,
-  glpi_solicitado_vpn: false,
-  glpi_solicitado_cracha: true,
   glpi_status: 'Pendente', // 'Pendente', 'Aberto', 'Em Atendimento', 'Concluído'
+  glpi_status_equipamento: 'Pendente',
+  glpi_status_acesso: 'Pendente',
 
   // 8. Planilha Admissão
   planilha_inserida: false,
   planilha_data: null,
+  informe_bp_novo_candidato: false,
   matricula_gerada: ''
 };
 

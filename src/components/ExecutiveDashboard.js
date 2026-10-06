@@ -4,6 +4,7 @@
 
 import { store } from '../db/store.js';
 import { authService } from '../services/authService.js';
+import { setIndicatorsSubtab } from './IndicatorsModule.js';
 
 /**
  * Renderiza o Painel Executivo (Tela Inicial de Governança e Operação)
@@ -68,11 +69,11 @@ export function renderExecutiveDashboard(
 
   // Distribuição por Etapas do Funil
   const stageDistribution = {
-    TRIAGEM: applications.filter(a => a.stage === 'TRIAGEM').length,
-    ENTREVISTA_RH: applications.filter(a => a.stage === 'ENTREVISTA_RH').length,
-    ENTREVISTA_GESTOR: applications.filter(a => a.stage === 'ENTREVISTA_GESTOR').length,
-    PROPOSTA: applications.filter(a => a.stage === 'PROPOSTA').length,
-    CONTRATADO: applications.filter(a => a.stage === 'CONTRATADO').length
+    TRIAGEM: applications.filter(a => a.current_stage === 'Triagem' || a.current_stage === 'Primeiro Contato' || a.current_stage === 'Aguardando Conexão / LinkedIn' || a.stage === 'TRIAGEM').length,
+    ENTREVISTA_RH: applications.filter(a => a.current_stage === 'Entrevista R&S' || a.current_stage === 'Entrevista RH' || a.current_stage === 'Aguardando Retorno' || a.stage === 'ENTREVISTA_RH').length,
+    ENTREVISTA_GESTOR: applications.filter(a => a.current_stage === 'Entrevista Gestor' || a.current_stage === 'Teste' || a.current_stage === 'Aguardando Entrevista' || a.stage === 'ENTREVISTA_GESTOR').length,
+    PROPOSTA: applications.filter(a => a.current_stage === 'Oferta' || a.stage === 'PROPOSTA').length,
+    CONTRATADO: applications.filter(a => a.current_stage === 'Contratado' || a.status === 'Aprovado R&S' || a.stage === 'CONTRATADO').length
   };
 
   // Distribuição por Diretoria
@@ -297,6 +298,44 @@ export function renderExecutiveDashboard(
             `}
           </div>
 
+          <!-- Seção Executiva de SLA por Etapa e Vaga -->
+          <div class="exec-section-card" style="margin-top: 16px;">
+            <div class="exec-card-header">
+              <div class="exec-card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Indicadores de SLA por Etapa &amp; Vaga
+              </div>
+              <button class="btn-link" id="exec-goto-sla-tab" style="font-weight: 700; color: var(--navy); cursor: pointer;">Ver Painel de SLAs &rarr;</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px 14px; border-radius: var(--radius-xs);">
+                <div style="font-size: 0.74rem; color: var(--muted); font-weight: 700; text-transform: uppercase;">Monitoramento de Vagas</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: ${totalSlaEstourado > 0 ? 'var(--coral)' : 'var(--emerald)'}; margin-top: 3px;">
+                  ${jobsNeedingAttention.length} vaga(s) em atenção
+                </div>
+                <div style="font-size: 0.76rem; color: var(--muted); margin-top: 4px;">
+                  ${totalSlaEstourado} candidatos estourados • ${totalSlaAtencao} em atenção
+                </div>
+              </div>
+
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px 14px; border-radius: var(--radius-xs);">
+                <div style="font-size: 0.74rem; color: var(--muted); font-weight: 700; text-transform: uppercase;">Conformidade Global</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: ${slaComplianceRate >= 80 ? 'var(--emerald)' : 'var(--amber)'}; margin-top: 3px;">
+                  ${slaComplianceRate}% no prazo
+                </div>
+                <div style="font-size: 0.76rem; color: var(--muted); margin-top: 4px;">
+                  Acompanhamento de funil e gargalos
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+              <button class="btn btn-secondary btn-sm" id="exec-btn-explore-sla" type="button" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Explorar SLAs por Etapa e Vaga
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <!-- Coluna Direita -->
@@ -415,6 +454,16 @@ export function renderExecutiveDashboard(
 
   const scInds = document.getElementById('shortcut-indicators');
   if (scInds) scInds.onclick = () => onViewChange('indicators');
+
+  // Navegação direta para os indicadores de SLA
+  const openSlaTab = () => {
+    setIndicatorsSubtab('sla');
+    onViewChange('indicators');
+  };
+  const btnGotoSlaTab = document.getElementById('exec-goto-sla-tab');
+  if (btnGotoSlaTab) btnGotoSlaTab.onclick = openSlaTab;
+  const btnExploreSla = document.getElementById('exec-btn-explore-sla');
+  if (btnExploreSla) btnExploreSla.onclick = openSlaTab;
 
   // Detalhes da Vaga nas vagas críticas
   container.querySelectorAll('.btn-inspect-job').forEach(btn => {

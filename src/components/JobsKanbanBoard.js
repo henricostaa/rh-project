@@ -58,7 +58,7 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
                         <span class="job-card-title" title="${job.title}">${job.title}</span>
                       </div>
                       <div class="job-pill" style="margin-top: 4px;">
-                        ${job.business_unit} • ${job.department}
+                        ${job.business_unit} • ${job.department}${(job.location_city || job.location_state) ? ` • 📍 ${job.location_city || ''}${job.location_state ? `/${job.location_state}` : ''}` : ''}
                       </div>
                     </div>
                   </div>
@@ -70,7 +70,7 @@ export function renderJobsKanbanBoard(jobs, onMoveStatusClick, onAssignClick, on
                   <span class="badge badge-neutral" style="background: #f0f9ff; color: #0369a1; border-color: #bae6fd;">💰 ${formatSalaryRange(job.salary_min, job.salary_max)}</span>
                   <span class="badge badge-neutral" style="background: #f8fafc; color: #334155;">📍 ${job.work_model || 'Presencial'}</span>
                   <span class="badge badge-neutral" style="background: #fdf4ff; color: #86198f; border-color: #f5d0fe;">👥 ${job.positions_count || 1} pos.</span>
-                  <span class="badge badge-neutral">${job.headcount_type}</span>
+                  <span class="badge badge-neutral">${job.headcount_type}${job.replaced_employee ? `: ${job.replaced_employee}` : ''}</span>
                   ${job.is_pcd ? '<span class="badge badge-a">PCD</span>' : ''}
                   ${job.is_confidential ? '<span class="badge badge-confidential">Confidencial</span>' : ''}
                 </div>

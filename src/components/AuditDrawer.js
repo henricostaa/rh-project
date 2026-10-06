@@ -43,6 +43,7 @@ export function openAuditDrawer(applicationId) {
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
         <div>
           <div><b>E-mail:</b> ${cand ? cand.email : '--'} | <b>Sexo / Gênero:</b> <span class="badge badge-neutral">${cand && cand.gender ? cand.gender : 'Não informado'}</span></div>
+          <div><b>Pretensão Salarial:</b> ${cand && cand.salary_expectation ? `<span style="font-weight: 600; color: #0284c7;">💰 R$ ${Number(cand.salary_expectation).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>` : '<span style="color: var(--muted);">Não informada</span>'}</div>
           <div><b>Empresa / Bandeira:</b> ${job && job.business_unit ? job.business_unit : 'N/A'} | <b>Diretoria:</b> ${job && job.department ? job.department : 'N/A'}</div>
           <div><b>Canal:</b> ${cand ? cand.source : '--'} | <b>Telefone:</b> ${cand && cand.phone ? cand.phone : '--'}</div>
           ${cand && (cand.resume_url || cand.resume_name) ? `
@@ -116,14 +117,52 @@ export function openAuditDrawer(applicationId) {
     };
   }
 
-  if (history.length === 0) {
+  const stageHistory = pipelineService.getAuditHistory(applicationId).map(h => ({
+    ...h,
+    _type: 'STAGE_MOVE',
+    _timestamp: new Date(h.moved_at).getTime()
+  }));
+
+  const candHistory = (cand && store.getCandidateCadastralHistory) 
+    ? store.getCandidateCadastralHistory(cand.id || cand.email).map(h => ({
+        ...h,
+        _type: 'CADASTRAL',
+        _timestamp: new Date(h.changed_at).getTime()
+      }))
+    : [];
+
+  const combinedHistory = [...stageHistory, ...candHistory].sort((a, b) => b._timestamp - a._timestamp);
+
+  if (combinedHistory.length === 0) {
     timelineEl.innerHTML = `
       <div style="text-align: center; color: var(--muted); padding: 20px;">
-        Nenhuma movimentação registrada no histórico.
+        Nenhuma movimentação ou alteração registrada no histórico.
       </div>
     `;
   } else {
-    timelineEl.innerHTML = history.map(h => {
+    timelineEl.innerHTML = combinedHistory.map(h => {
+      if (h._type === 'CADASTRAL') {
+        const movedDate = new Date(h.changed_at).toLocaleString('pt-BR');
+        return `
+          <div class="timeline-item">
+            <div class="timeline-dot" style="background: #0284c7;"></div>
+            <div class="timeline-card" style="padding: 10px 14px; background: #f0f9ff; border: 1px solid #bae6fd;">
+              <div class="timeline-meta" style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--muted); margin-bottom: 4px;">
+                <span>Usuário: <b>${h.changed_by}</b></span>
+                <span>${movedDate}</span>
+              </div>
+              <div class="timeline-stages" style="color: #0369a1; display: flex; align-items: center; gap: 6px;">
+                <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.72rem; font-weight: 600;">Alteração Cadastral</span>
+                <span style="font-size: 0.8rem; font-weight: 600;">${h.action === 'CADASTRO_INICIAL' ? 'Cadastro Inicial' : (h.action === 'TRANSFERENCIA_VAGA' ? 'Transferência' : 'Dados do Candidato')}</span>
+              </div>
+              <div class="timeline-feedback" style="margin-top: 6px; font-size: 0.78rem; color: #334155; background: #ffffff; padding: 8px 10px; border-radius: 4px; border-left: 3px solid #0284c7; line-height: 1.45;">
+                ${h.description}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       const movedDate = new Date(h.moved_at).toLocaleString('pt-BR');
       return `
         <div class="timeline-item">

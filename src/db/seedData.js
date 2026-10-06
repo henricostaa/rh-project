@@ -15,6 +15,10 @@ export const INITIAL_JOBS = [
     positions_count: 2,
     salary_min: 8000,
     salary_max: 12000,
+    location_associada: 'Plurix - CSC',
+    location_city: 'São Paulo',
+    location_state: 'SP',
+    replaced_employee: null,
     is_pcd: false,
     status: 'Triagem',
     stage_sla_days: 4,
@@ -38,6 +42,10 @@ export const INITIAL_JOBS = [
     positions_count: 1,
     salary_min: 9500,
     salary_max: 14000,
+    location_associada: 'Superpão',
+    location_city: 'Guarapuava',
+    location_state: 'PR',
+    replaced_employee: 'Marcos Vinicius Ribeiro',
     is_pcd: false,
     status: 'Entrevista RH',
     stage_sla_days: 3,
@@ -61,6 +69,10 @@ export const INITIAL_JOBS = [
     positions_count: 1,
     salary_min: 25000,
     salary_max: 35000,
+    location_associada: 'Plurix - Sede',
+    location_city: 'São Paulo',
+    location_state: 'SP',
+    replaced_employee: null,
     is_pcd: false,
     status: 'Entrevista Gestor',
     stage_sla_days: 5,
@@ -84,6 +96,10 @@ export const INITIAL_JOBS = [
     positions_count: 3,
     salary_min: 7500,
     salary_max: 10500,
+    location_associada: 'Amigão',
+    location_city: 'Campinas',
+    location_state: 'SP',
+    replaced_employee: null,
     is_pcd: false,
     status: 'Alinhamento',
     stage_sla_days: 4,
@@ -107,6 +123,10 @@ export const INITIAL_JOBS = [
     positions_count: 5,
     salary_min: 15000,
     salary_max: 22000,
+    location_associada: 'Avenida',
+    location_city: 'Cuiabá',
+    location_state: 'MT',
+    replaced_employee: 'Ricardo Alves Ferreira',
     is_pcd: true,
     status: 'Alinhamento',
     stage_sla_days: 4,
@@ -128,6 +148,7 @@ export const INITIAL_CANDIDATES = [
     phone: '(11) 98765-4321',
     source: 'LinkedIn',
     gender: 'Masculino',
+    salary_expectation: 9500,
     created_at: new Date(Date.now() - 12 * 86400000).toISOString()
   },
   {
@@ -137,6 +158,7 @@ export const INITIAL_CANDIDATES = [
     phone: '(41) 99887-1122',
     source: 'Indicação Colaborador',
     gender: 'Feminino',
+    salary_expectation: 11000,
     created_at: new Date(Date.now() - 14 * 86400000).toISOString()
   },
   {
@@ -146,6 +168,7 @@ export const INITIAL_CANDIDATES = [
     phone: '(19) 97123-8899',
     source: 'Consultoria',
     gender: 'Masculino',
+    salary_expectation: 28000,
     created_at: new Date(Date.now() - 18 * 86400000).toISOString()
   },
   {
@@ -155,6 +178,7 @@ export const INITIAL_CANDIDATES = [
     phone: '(31) 99112-3344',
     source: 'ATS Plurix',
     gender: 'Feminino',
+    salary_expectation: 8500,
     created_at: new Date(Date.now() - 4 * 86400000).toISOString()
   },
   {
@@ -164,6 +188,7 @@ export const INITIAL_CANDIDATES = [
     phone: '(11) 98112-9988',
     source: 'Mov. Interna',
     gender: 'Masculino',
+    salary_expectation: 16000,
     created_at: new Date(Date.now() - 2 * 86400000).toISOString()
   }
 ];
@@ -342,6 +367,7 @@ export const INITIAL_ADMISSIONS = [
       glpi_solicitado_email: true,
       glpi_status: 'Pendente',
       planilha_inserida: false,
+      informe_bp_novo_candidato: false,
       matricula_gerada: ''
     },
     notes: 'Aguardando retorno do candidato com a carta oferta assinada.',
@@ -381,6 +407,7 @@ export const INITIAL_ADMISSIONS = [
       glpi_solicitado_email: true,
       glpi_status: 'Pendente',
       planilha_inserida: false,
+      informe_bp_novo_candidato: false,
       matricula_gerada: ''
     },
     notes: 'Exame agendado para depois de amanhã. Candidata já anexou certidões e comprovantes.',
@@ -424,6 +451,7 @@ export const INITIAL_ADMISSIONS = [
       glpi_solicitado_cracha: true,
       glpi_status: 'Em Atendimento',
       planilha_inserida: false,
+      informe_bp_novo_candidato: false,
       matricula_gerada: ''
     },
     notes: 'Chamado GLPI aberto para configuração de MacBook e acesso à rede executiva.',
@@ -454,6 +482,7 @@ export const INITIAL_ADMISSIONS = [
       glpi_ticket_numero: 'GLPI-84102',
       glpi_status: 'Concluído',
       planilha_inserida: true,
+      informe_bp_novo_candidato: true,
       matricula_gerada: 'PLX-0982'
     },
     notes: 'Admissão finalizada e homologada. Colaboradora já integrada na equipe Digital.',
@@ -482,6 +511,7 @@ export const INITIAL_ADMISSIONS = [
       email_confirmacao_enviado: false,
       glpi_status: 'Pendente',
       planilha_inserida: false,
+      informe_bp_novo_candidato: false,
       matricula_gerada: ''
     },
     notes: 'Candidato já está preenchendo os dados no portal de admissão.',

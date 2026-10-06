@@ -52,6 +52,19 @@ class AdmissionService {
           checklist: checklist || {},
           created_by: currentPersona.name || currentPersona.email
         });
+        if (createdAdmission) {
+          store.syncAdmission(createdAdmission);
+          store.addAdmissionHistoryRecord({
+            admission_id: createdAdmission.id,
+            previous_stage: 'Início da Admissão',
+            new_stage: createdAdmission.current_stage,
+            status_at_move: createdAdmission.status,
+            feedback: notes || 'Processo de admissão iniciado no sistema ATS Plurix 360°.',
+            moved_by: currentPersona.name || currentPersona.email,
+            duration_days: 0,
+            moved_at: new Date().toISOString()
+          });
+        }
       } catch (err) {
         console.warn('Erro ao persistir admissão no Supabase, usando persistência local:', err);
         createdAdmission = store.createAdmission({
@@ -91,6 +104,11 @@ class AdmissionService {
 
     const currentPersona = authService.getPersona();
     const movedBy = currentPersona.name || currentPersona.email || 'Sistema ATS';
+    const previousStage = admission.current_stage;
+    const now = new Date();
+    const stageEnteredDate = new Date(admission.stage_entered_at || admission.created_at);
+    const durationDays = Math.max(0, Math.floor((now.getTime() - stageEnteredDate.getTime()) / 86400000));
+    const trimmedFeedback = feedback ? feedback.trim() : `Movimentação para etapa: ${newStage}`;
 
     let updatedAdmission;
     if (isSupabaseConfigured() && typeof supabaseService.moveAdmissionStage === 'function') {
@@ -98,15 +116,30 @@ class AdmissionService {
         updatedAdmission = await supabaseService.moveAdmissionStage(admissionId, {
           newStage,
           newStatus,
-          feedback: feedback ? feedback.trim() : `Movimentação para etapa: ${newStage}`,
-          movedBy
+          feedback: trimmedFeedback,
+          movedBy,
+          previousStage,
+          durationDays
         });
+        if (updatedAdmission) {
+          store.syncAdmission(updatedAdmission);
+          store.addAdmissionHistoryRecord({
+            admission_id: admissionId,
+            previous_stage: previousStage,
+            new_stage: newStage,
+            status_at_move: updatedAdmission.status || 'EM_ANDAMENTO',
+            feedback: trimmedFeedback,
+            moved_by: movedBy,
+            duration_days: durationDays,
+            moved_at: now.toISOString()
+          });
+        }
       } catch (err) {
         console.warn('Erro ao mover etapa de admissão no Supabase, usando local:', err);
         updatedAdmission = store.moveAdmissionStage(admissionId, {
           newStage,
           newStatus,
-          feedback: feedback ? feedback.trim() : `Movimentação para etapa: ${newStage}`,
+          feedback: trimmedFeedback,
           movedBy
         });
       }
@@ -114,7 +147,7 @@ class AdmissionService {
       updatedAdmission = store.moveAdmissionStage(admissionId, {
         newStage,
         newStatus,
-        feedback: feedback ? feedback.trim() : `Movimentação para etapa: ${newStage}`,
+        feedback: trimmedFeedback,
         movedBy
       });
     }
@@ -127,6 +160,7 @@ class AdmissionService {
     if (isSupabaseConfigured() && typeof supabaseService.updateAdmissionChecklist === 'function') {
       try {
         updatedAdmission = await supabaseService.updateAdmissionChecklist(admissionId, key, value);
+        if (updatedAdmission) store.syncAdmission(updatedAdmission);
       } catch (err) {
         updatedAdmission = store.updateAdmissionChecklist(admissionId, key, value);
       }
@@ -141,6 +175,7 @@ class AdmissionService {
     if (isSupabaseConfigured() && typeof supabaseService.updateAdmission === 'function') {
       try {
         updated = await supabaseService.updateAdmission(admissionId, updates);
+        if (updated) store.syncAdmission(updated);
       } catch (err) {
         updated = store.updateAdmission(admissionId, updates);
       }

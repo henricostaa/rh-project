@@ -58,6 +58,10 @@ export class SupabaseService {
       department: jobData.department,
       hiring_manager: jobData.hiring_manager || null,
       headcount_type: jobData.headcount_type || 'Substituição',
+      replaced_employee: jobData.replaced_employee || null,
+      location_associada: jobData.location_associada || jobData.business_unit || null,
+      location_city: jobData.location_city || null,
+      location_state: jobData.location_state || null,
       selection_type: jobData.selection_type,
       work_model: jobData.work_model || 'Presencial',
       positions_count: (jobData.positions_count && Number(jobData.positions_count) > 0) ? Number(jobData.positions_count) : 1,
@@ -189,6 +193,7 @@ export class SupabaseService {
       phone: candData.phone || null,
       source: candData.source,
       gender: candData.gender || 'Não informado',
+      salary_expectation: (candData.salary_expectation !== undefined && candData.salary_expectation !== '' && candData.salary_expectation !== null) ? Number(candData.salary_expectation) : null,
       linkedin: candData.linkedin || null,
       comment: candData.comment || null,
       resume_url: candData.resume_url || null,
@@ -238,6 +243,7 @@ export class SupabaseService {
       phone: updates.phone !== undefined ? (updates.phone || null) : undefined,
       source: updates.source,
       gender: updates.gender !== undefined ? (updates.gender || 'Não informado') : undefined,
+      salary_expectation: updates.salary_expectation !== undefined ? (updates.salary_expectation !== '' && updates.salary_expectation !== null ? Number(updates.salary_expectation) : null) : undefined,
       linkedin: updates.linkedin !== undefined ? (updates.linkedin || null) : undefined,
       comment: updates.comment !== undefined ? (updates.comment || null) : undefined,
       resume_url: updates.resume_url !== undefined ? updates.resume_url : undefined,
@@ -551,6 +557,67 @@ export class SupabaseService {
   }
 
   // ---------------------------------------------------------------------------
+  // Candidate History API (Auditoria de Alterações Cadastrais de Candidatos)
+  // ---------------------------------------------------------------------------
+  async addCandidateHistoryRecord(record) {
+    if (!isSupabaseConfigured()) return null;
+
+    const { data, error } = await supabase
+      .from('candidate_history')
+      .insert([{
+        candidate_id: record.candidate_id,
+        action: record.action || 'ATUALIZACAO_CADASTRAL',
+        description: record.description || '',
+        changed_fields: record.changed_fields || null,
+        changed_by: record.changed_by,
+        changed_at: record.changed_at || new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao inserir histórico cadastral do candidato:', error);
+    } else if (data) {
+      try {
+        const { store } = await import('../db/store.js');
+        store.syncCandidateHistoryRecord(data);
+      } catch (e) {
+        console.warn('Erro ao sincronizar candidate_history no store local:', e);
+      }
+    }
+    return data;
+  }
+
+  async getCandidateHistoryByCandidateId(candidateId) {
+    if (!isSupabaseConfigured()) return [];
+    const { data, error } = await supabase
+      .from('candidate_history')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .order('changed_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar histórico cadastral do candidato:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async getAllCandidateHistory() {
+    if (!isSupabaseConfigured()) return [];
+    const { data, error } = await supabase
+      .from('candidate_history')
+      .select('*')
+      .order('changed_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar histórico cadastral global de candidatos:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // ---------------------------------------------------------------------------
   // Deletion APIs
   // ---------------------------------------------------------------------------
   async deleteApplication(applicationId, appObject = null) {
@@ -631,6 +698,9 @@ export class SupabaseService {
 
           await supabase.from('applications').delete().eq('candidate_id', realCandidateUuid);
         }
+
+        // Excluir histórico cadastral do candidato
+        await supabase.from('candidate_history').delete().eq('candidate_id', realCandidateUuid);
 
         const { error } = await supabase.from('candidates').delete().eq('id', realCandidateUuid);
         if (error) {
@@ -728,6 +798,22 @@ export class SupabaseService {
         .single();
 
       if (error) throw error;
+
+      // Log audit inicial
+      try {
+        await supabase.from('admission_stage_history').insert([{
+          admission_id: data.id,
+          previous_stage: 'Início da Admissão',
+          new_stage: data.current_stage,
+          status_at_move: data.status || 'EM_ANDAMENTO',
+          feedback: admissionData.notes || 'Processo de admissão iniciado no sistema ATS Plurix 360°.',
+          moved_by: admissionData.created_by || 'Sistema ATS',
+          duration_days: 0
+        }]);
+      } catch (histErr) {
+        console.warn('Erro ao gravar histórico inicial de admissão no Supabase:', histErr);
+      }
+
       return data;
     } catch (err) {
       console.warn('Erro ao criar admissão no Supabase:', err);
@@ -735,7 +821,7 @@ export class SupabaseService {
     }
   }
 
-  async moveAdmissionStage(admissionId, { newStage, newStatus, feedback, movedBy }) {
+  async moveAdmissionStage(admissionId, { newStage, newStatus, feedback, movedBy, previousStage, durationDays }) {
     if (!isSupabaseConfigured()) return null;
     try {
       const now = new Date().toISOString();
@@ -759,14 +845,19 @@ export class SupabaseService {
       if (error) throw error;
 
       // Log audit
-      await supabase.from('admission_stage_history').insert([{
-        admission_id: admissionId,
-        previous_stage: 'Transição',
-        new_stage: newStage,
-        status_at_move: updates.status || 'EM_ANDAMENTO',
-        feedback: feedback || '',
-        moved_by: movedBy
-      }]);
+      try {
+        await supabase.from('admission_stage_history').insert([{
+          admission_id: admissionId,
+          previous_stage: previousStage || 'Transição',
+          new_stage: newStage,
+          status_at_move: updates.status || data.status || 'EM_ANDAMENTO',
+          feedback: feedback || '',
+          moved_by: movedBy || 'Sistema ATS',
+          duration_days: durationDays || 0
+        }]);
+      } catch (histErr) {
+        console.warn('Erro ao gravar histórico de etapa de admissão no Supabase:', histErr);
+      }
 
       return data;
     } catch (err) {

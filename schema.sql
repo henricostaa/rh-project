@@ -35,6 +35,10 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS positions_count INTEGER DEFAULT 1;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS stage_slas JSONB;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS location_associada TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS location_city TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS location_state TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS replaced_employee TEXT;
 
 -- 2. Tabela de Candidatos
 CREATE TABLE IF NOT EXISTS candidates (
@@ -46,6 +50,7 @@ CREATE TABLE IF NOT EXISTS candidates (
   linkedin TEXT,
   comment TEXT,
   gender TEXT DEFAULT 'Não informado',
+  salary_expectation NUMERIC(10, 2),
   resume_url TEXT,
   resume_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -54,6 +59,7 @@ CREATE TABLE IF NOT EXISTS candidates (
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS linkedin TEXT;
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'Não informado';
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS salary_expectation NUMERIC(10, 2);
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_url TEXT;
 ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resume_name TEXT;
 
@@ -70,7 +76,7 @@ CREATE TABLE IF NOT EXISTS applications (
   UNIQUE(job_id, candidate_id)
 );
 
--- 4. Histórico e Auditoria Temporal de Candidatos (INSERT-Only)
+-- 4. Histórico e Auditoria Temporal de Etapas dos Candidatos (INSERT-Only)
 CREATE TABLE IF NOT EXISTS stage_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
@@ -81,6 +87,17 @@ CREATE TABLE IF NOT EXISTS stage_history (
   moved_by TEXT NOT NULL,
   duration_days INTEGER NOT NULL DEFAULT 0,
   moved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4.1 Histórico e Auditoria Cadastral de Candidatos (INSERT-Only)
+CREATE TABLE IF NOT EXISTS candidate_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  action TEXT NOT NULL DEFAULT 'ATUALIZACAO_CADASTRAL',
+  description TEXT NOT NULL,
+  changed_fields JSONB,
+  changed_by TEXT NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 5. Histórico e Auditoria de Vagas (INSERT-Only)
@@ -101,6 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_candidates_email ON candidates(email);
 CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
 CREATE INDEX IF NOT EXISTS idx_applications_candidate ON applications(candidate_id);
 CREATE INDEX IF NOT EXISTS idx_stage_history_app ON stage_history(application_id);
+CREATE INDEX IF NOT EXISTS idx_candidate_history_cand ON candidate_history(candidate_id);
 CREATE INDEX IF NOT EXISTS idx_job_history_job ON job_history(job_id);
 
 -- 6. Tabela de Processos de Admissão
@@ -151,6 +169,7 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stage_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidate_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admission_stage_history ENABLE ROW LEVEL SECURITY;
@@ -168,6 +187,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a stage_history') THEN
     CREATE POLICY "Acesso total a stage_history" ON stage_history FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a candidate_history') THEN
+    CREATE POLICY "Acesso total a candidate_history" ON candidate_history FOR ALL USING (true) WITH CHECK (true);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Acesso total a job_history') THEN
     CREATE POLICY "Acesso total a job_history" ON job_history FOR ALL USING (true) WITH CHECK (true);
